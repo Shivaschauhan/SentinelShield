@@ -65,17 +65,21 @@ class SmsCommandReceiver : BroadcastReceiver() {
         val isTrusted = trustedContacts.any { trusted ->
             if (trusted.isBlank()) false
             else {
-                val cleanSender = sender.replace("[^0-9+]".toRegex(), "")
-                val cleanTrusted = trusted.replace("[^0-9+]".toRegex(), "")
-                val phoneUtilsMatch = PhoneNumberUtils.compare(sender, trusted)
-                val suffixMatch = (cleanSender.length >= 7 && cleanTrusted.length >= 7 && cleanSender.endsWith(cleanTrusted))
+                val cleanSender = sender.replace("[^0-9]".toRegex(), "")
+                val cleanTrusted = trusted.replace("[^0-9]".toRegex(), "")
+                val phoneUtilsMatch = PhoneNumberUtils.compare(context, sender, trusted)
+                
+                // Bidirectional suffix check to handle country code mismatches (+919876543210 vs 9876543210)
+                val suffixMatch = (cleanSender.length >= 7 && cleanTrusted.length >= 7) &&
+                        (cleanSender.endsWith(cleanTrusted) || cleanTrusted.endsWith(cleanSender) ||
+                         cleanSender.takeLast(7) == cleanTrusted.takeLast(7))
                 val exactMatch = (cleanSender.isNotEmpty() && cleanSender == cleanTrusted)
                 
                 val matches = phoneUtilsMatch || suffixMatch || exactMatch
                 DebugLogger.log(
                     context,
                     "SmsCommandReceiver",
-                    "Comparing Sender '$sender' against Trusted '$trusted' -> PhoneUtilsMatch: $phoneUtilsMatch, SuffixMatch: $suffixMatch, ExactMatch: $exactMatch => Result: $matches",
+                    "Comparing Sender '$sender' (clean: $cleanSender) against Trusted '$trusted' (clean: $cleanTrusted) -> PhoneUtils: $phoneUtilsMatch, Suffix: $suffixMatch, Exact: $exactMatch => Result: $matches",
                     force = true
                 )
                 if (matches) matchedContact = trusted
@@ -103,12 +107,15 @@ class SmsCommandReceiver : BroadcastReceiver() {
         }
     }
 
-    private suspend fun handleCommand(context: Context, sender: String, command: String) {
-        DebugLogger.log(context, "SmsCommandReceiver", "Received trusted command content: '$command' from $sender", force = true)
+    suspend fun handleCommand(context: Context, sender: String, rawMessage: String) {
+        val upperMsg = rawMessage.uppercase(Locale.ROOT)
+        val tokens = upperMsg.split("[^A-Z0-9]".toRegex()).filter { it.isNotBlank() }
 
-        val isLockCommand = listOf("LOCK", "LOCKDOWN", "LOST").any { command.contains(it) }
-        val isSirenCommand = listOf("SIREN", "ALARM", "SOUND", "RING").any { command.contains(it) }
-        val isTrackCommand = listOf("LOCATION", "TRACK", "GPS", "LOCATE", "WHERE").any { command.contains(it) }
+        DebugLogger.log(context, "SmsCommandReceiver", "Received command phrase: '$rawMessage' (Tokens: $tokens) from $sender", force = true)
+
+        val isLockCommand = tokens.any { it in setOf("LOCK", "LOCKDOWN", "LOST") } || upperMsg.contains("LOCK")
+        val isSirenCommand = tokens.any { it in setOf("SIREN", "ALARM", "SOUND", "RING") } || upperMsg.contains("SIREN") || upperMsg.contains("ALARM")
+        val isTrackCommand = tokens.any { it in setOf("LOCATION", "TRACK", "GPS", "LOCATE", "WHERE") } || upperMsg.contains("LOCATION") || upperMsg.contains("TRACK")
 
         when {
             isLockCommand -> {
@@ -135,15 +142,26 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 trackLocation(context, sender)
             }
             else -> {
-                DebugLogger.log(context, "SmsCommandReceiver", "Unrecognized command phrase: '$command'. (Supported: LOCK, SIREN, LOCATION / TRACK / GPS)", force = true)
+                DebugLogger.log(context, "SmsCommandReceiver", "Unrecognized command phrase: '$rawMessage'. (Supported: LOCK, SIREN, LOCATION / TRACK / GPS)", force = true)
                 sendSms(context, sender, "[SentinelShield] Unrecognized command. Available commands: LOCK, SIREN, LOCATION, TRACK, GPS")
             }
         }
     }
 
-    private fun sendSms(context: Context, destination: String, message: String) {
-        val smsManager = context.getSystemService(SmsManager::class.java)
+    fun sendSms(context: Context, destination: String, message: String) {
+        if (destination.isBlank() || destination == "Unknown") return
         try {
+            val smsManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                val subId = android.telephony.SubscriptionManager.getDefaultSmsSubscriptionId()
+                if (subId != android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    context.getSystemService(SmsManager::class.java)?.createForSubscriptionId(subId) ?: context.getSystemService(SmsManager::class.java)
+                } else {
+                    context.getSystemService(SmsManager::class.java)
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
             smsManager?.sendTextMessage(destination, null, message, null, null)
             DebugLogger.log(context, "SmsCommandReceiver", "Sent SMS response to $destination: '$message'", force = true)
         } catch (e: Exception) {
