@@ -1,0 +1,67 @@
+name: Build signed release APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-signed-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android 16 QPR2 SDK
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager --install "platforms;android-36.1" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode signing keystore
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$SIGNING_KEYSTORE_BASE64" || (echo "Missing SIGNING_KEYSTORE_BASE64 repository secret." && exit 1)
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sentinel-release.keystore"
+
+      - name: Assemble signed production APK
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          test -n "$SIGNING_STORE_PASSWORD" || (echo "Missing SIGNING_STORE_PASSWORD repository secret." && exit 1)
+          test -n "$SIGNING_KEY_ALIAS" || (echo "Missing SIGNING_KEY_ALIAS repository secret." && exit 1)
+          test -n "$SIGNING_KEY_PASSWORD" || (echo "Missing SIGNING_KEY_PASSWORD repository secret." && exit 1)
+          chmod +x ./gradlew
+          ./gradlew --no-daemon :app:assembleRelease \
+            -PRELEASE_STORE_FILE="$RUNNER_TEMP/sentinel-release.keystore" \
+            -PRELEASE_STORE_PASSWORD="$SIGNING_STORE_PASSWORD" \
+            -PRELEASE_KEY_ALIAS="$SIGNING_KEY_ALIAS" \
+            -PRELEASE_KEY_PASSWORD="$SIGNING_KEY_PASSWORD"
+
+      - name: Rename APK
+        run: mv app/build/outputs/apk/release/app-release.apk SentinelShield.apk
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SentinelShield-APK
+          path: SentinelShield.apk
+          if-no-files-found: error
+          retention-days: 30

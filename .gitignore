@@ -1,0 +1,43 @@
+# Gradle build artifacts & caches
+.gradle/
+build/
+**/build/
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Agent & workspace temp files
+.artifacts/
+HANDOFF.md
+
+# Local machine & environment configuration
+local.properties
+secrets.properties
+
+# Android Studio / IntelliJ IDEA configs
+.idea/
+*.iml
+.navigation/
+
+# Compiled outputs & packages
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Signing keys & certificates (NEVER upload private keys!)
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
+
+# OS generated files
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+
+# Log files & scratch data
+*.log

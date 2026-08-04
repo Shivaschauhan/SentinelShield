@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sentinel Shield</string>
+    <string name="device_admin_label">Sentinel Shield device admin</string>
+    <string name="device_admin_description">Allows Sentinel Shield to hide lock-screen notification content when you enable that protection.</string>
+    <string name="accessibility_service_label">Sentinel Fake Power Menu</string>
+    <string name="accessibility_service_description">Required to provide advanced security features such as Fake Power Menu shutdown interception to keep the device active and trackable even if a thief tries to turn it off.</string>
+</resources>
