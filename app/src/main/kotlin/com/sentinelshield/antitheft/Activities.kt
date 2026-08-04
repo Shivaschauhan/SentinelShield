@@ -80,6 +80,10 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
             com.sentinelshield.antitheft.utils.DebugLogger.log(this, "MainActivity", "Google Sign-In API exception (Code ${e.statusCode}): ${e.message}", force = true)
             if (e.statusCode == 12501) {
                 Toast.makeText(this, "Google Sign-In cancelled.", Toast.LENGTH_SHORT).show()
+            } else if (e.statusCode == 10) {
+                val errorMsg = "Google Sign-In Error 10 (DEVELOPER_ERROR): Package 'com.sentinelshield.antitheft' SHA-1 fingerprint is not registered in Google Cloud/Firebase Console."
+                com.sentinelshield.antitheft.utils.DebugLogger.log(this, "MainActivity", errorMsg, force = true)
+                Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show()
             } else {
                 Toast.makeText(this, "Google Sign-In failed (Code ${e.statusCode})", Toast.LENGTH_LONG).show()
             }
