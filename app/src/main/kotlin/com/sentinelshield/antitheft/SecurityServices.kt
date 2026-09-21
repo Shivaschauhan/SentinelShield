@@ -52,6 +52,18 @@ class SecurityAlertService : Service() {
                 false
             }
         }
+
+        fun stop(context: Context): Boolean {
+            return try {
+                val intent = Intent(context, SecurityAlertService::class.java)
+                context.stopService(intent)
+                com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SecurityAlertService", "SecurityAlertService stopped successfully.", force = true)
+                true
+            } catch (e: Exception) {
+                com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SecurityAlertService", "Failed to stop SecurityAlertService: ${e.message}")
+                false
+            }
+        }
     }
 
     private var player: MediaPlayer? = null
@@ -554,7 +566,7 @@ class SecurityMonitorService : Service() {
         }
         val filter = IntentFilter("android.intent.action.SIM_STATE_CHANGED")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(simBroadcastReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(simBroadcastReceiver, filter, Context.RECEIVER_EXPORTED)
         } else {
             registerReceiver(simBroadcastReceiver, filter)
         }

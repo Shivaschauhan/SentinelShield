@@ -1,6 +1,8 @@
 <div align="center">
 
-# <img src="docs/logo.svg" width="48" height="48" align="center"> SentinelShield
+<img src="assets/logo.svg" width="72" height="72" alt="SentinelShield Logo" />
+
+# SentinelShield
 
 ### Advanced Open-Source Android Anti-Theft & Device Protection Suite
 

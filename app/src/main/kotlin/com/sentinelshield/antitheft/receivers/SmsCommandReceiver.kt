@@ -6,22 +6,30 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Looper
 import android.provider.Telephony
 import android.telephony.PhoneNumberUtils
 import android.telephony.SmsManager
-import android.util.Log
+import android.telephony.SubscriptionManager
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.sentinelshield.antitheft.LockScreenAdminReceiver
 import com.sentinelshield.antitheft.SecurityAlertService
 import com.sentinelshield.antitheft.SecurityPreferences
 import com.sentinelshield.antitheft.utils.DebugLogger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import kotlin.coroutines.resume
@@ -65,21 +73,13 @@ class SmsCommandReceiver : BroadcastReceiver() {
         val isTrusted = trustedContacts.any { trusted ->
             if (trusted.isBlank()) false
             else {
-                val cleanSender = sender.replace("[^0-9]".toRegex(), "")
-                val cleanTrusted = trusted.replace("[^0-9]".toRegex(), "")
-                val phoneUtilsMatch = PhoneNumberUtils.compare(context, sender, trusted)
-                
-                // Bidirectional suffix check to handle country code mismatches (+919876543210 vs 9876543210)
-                val suffixMatch = (cleanSender.length >= 7 && cleanTrusted.length >= 7) &&
-                        (cleanSender.endsWith(cleanTrusted) || cleanTrusted.endsWith(cleanSender) ||
-                         cleanSender.takeLast(7) == cleanTrusted.takeLast(7))
-                val exactMatch = (cleanSender.isNotEmpty() && cleanSender == cleanTrusted)
-                
-                val matches = phoneUtilsMatch || suffixMatch || exactMatch
+                val phoneUtilsMatch = PhoneNumberUtils.compare(sender, trusted)
+                val parserMatch = SmsCommandParser.isContactMatch(sender, trusted)
+                val matches = phoneUtilsMatch || parserMatch
                 DebugLogger.log(
                     context,
                     "SmsCommandReceiver",
-                    "Comparing Sender '$sender' (clean: $cleanSender) against Trusted '$trusted' (clean: $cleanTrusted) -> PhoneUtils: $phoneUtilsMatch, Suffix: $suffixMatch, Exact: $exactMatch => Result: $matches",
+                    "Comparing Sender '$sender' against Trusted '$trusted' -> PhoneUtils: $phoneUtilsMatch, ParserMatch: $parserMatch => Result: $matches",
                     force = true
                 )
                 if (matches) matchedContact = trusted
@@ -92,13 +92,24 @@ class SmsCommandReceiver : BroadcastReceiver() {
             return
         }
 
+        val cleanSenderDigits = sender.replace("[^0-9+]".toRegex(), "")
+        val responseTarget = if (cleanSenderDigits.startsWith("+")) {
+            cleanSenderDigits
+        } else if (matchedContact?.startsWith("+") == true) {
+            matchedContact
+        } else if (cleanSenderDigits.isNotEmpty()) {
+            cleanSenderDigits
+        } else {
+            matchedContact ?: sender
+        }
+
         DebugLogger.log(context, "SmsCommandReceiver", "AUTHORIZED SUCCESS: Number '$sender' matched trusted contact '$matchedContact'. Executing command: '$fullBody'", force = true)
 
         val pendingResult = goAsync()
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                handleCommand(context, sender, fullBody)
+                handleCommand(context, responseTarget, fullBody)
             } catch (e: Exception) {
                 DebugLogger.log(context, "SmsCommandReceiver", "EXECUTION ERROR: Failed processing command '$fullBody': ${e.message}", force = true)
             } finally {
@@ -108,17 +119,16 @@ class SmsCommandReceiver : BroadcastReceiver() {
     }
 
     suspend fun handleCommand(context: Context, sender: String, rawMessage: String) {
-        val upperMsg = rawMessage.uppercase(Locale.ROOT)
-        val tokens = upperMsg.split("[^A-Z0-9]".toRegex()).filter { it.isNotBlank() }
+        val command = SmsCommandParser.parse(rawMessage)
+        DebugLogger.log(context, "SmsCommandReceiver", "Received command: $command from phrase '$rawMessage' from $sender", force = true)
 
-        DebugLogger.log(context, "SmsCommandReceiver", "Received command phrase: '$rawMessage' (Tokens: $tokens) from $sender", force = true)
-
-        val isLockCommand = tokens.any { it in setOf("LOCK", "LOCKDOWN", "LOST") } || upperMsg.contains("LOCK")
-        val isSirenCommand = tokens.any { it in setOf("SIREN", "ALARM", "SOUND", "RING") } || upperMsg.contains("SIREN") || upperMsg.contains("ALARM")
-        val isTrackCommand = tokens.any { it in setOf("LOCATION", "TRACK", "GPS", "LOCATE", "WHERE") } || upperMsg.contains("LOCATION") || upperMsg.contains("TRACK")
-
-        when {
-            isLockCommand -> {
+        when (command) {
+            RemoteCommand.STOP_SIREN -> {
+                DebugLogger.log(context, "SmsCommandReceiver", "Executing STOP SIREN command: Silencing emergency siren...", force = true)
+                SecurityAlertService.stop(context)
+                sendSms(context, sender, "[SentinelShield] Emergency siren deactivated.")
+            }
+            RemoteCommand.LOCK -> {
                 DebugLogger.log(context, "SmsCommandReceiver", "Executing LOCK command: Locking screen via DeviceAdmin...", force = true)
                 val dpm = context.getSystemService(DevicePolicyManager::class.java)
                 val adminComponent = ComponentName(context, LockScreenAdminReceiver::class.java)
@@ -131,29 +141,41 @@ class SmsCommandReceiver : BroadcastReceiver() {
                     DebugLogger.log(context, "SmsCommandReceiver", "LOCK command failed: Device Admin is not enabled.", force = true)
                 }
             }
-            isSirenCommand -> {
+            RemoteCommand.SIREN -> {
                 DebugLogger.log(context, "SmsCommandReceiver", "Executing SIREN/ALARM command: Triggering emergency siren at 100% volume...", force = true)
                 SecurityAlertService.start(context, "Remote Alarm Triggered!")
                 sendSms(context, sender, "[SentinelShield] Emergency siren activated at max volume.")
             }
-            isTrackCommand -> {
+            RemoteCommand.LOCATION -> {
                 DebugLogger.log(context, "SmsCommandReceiver", "Executing LOCATION/TRACK command: Requesting GPS coordinates...", force = true)
                 sendSms(context, sender, "[SentinelShield] Acquiring live location, please wait...")
                 trackLocation(context, sender)
             }
-            else -> {
-                DebugLogger.log(context, "SmsCommandReceiver", "Unrecognized command phrase: '$rawMessage'. (Supported: LOCK, SIREN, LOCATION / TRACK / GPS)", force = true)
-                sendSms(context, sender, "[SentinelShield] Unrecognized command. Available commands: LOCK, SIREN, LOCATION, TRACK, GPS")
+            RemoteCommand.HELP -> {
+                DebugLogger.log(context, "SmsCommandReceiver", "Executing HELP/STATUS command.", force = true)
+                sendSms(context, sender, "[SentinelShield] Status: Armed. Commands: LOCK, SIREN, STOP SIREN, LOCATION, TRACK, GPS, HELP")
+            }
+            RemoteCommand.UNKNOWN -> {
+                DebugLogger.log(context, "SmsCommandReceiver", "Unrecognized command phrase: '$rawMessage'. (Supported: LOCK, SIREN, STOP SIREN, LOCATION, TRACK, GPS, HELP)", force = true)
+                sendSms(context, sender, "[SentinelShield] Unrecognized command. Available commands: LOCK, SIREN, STOP SIREN, LOCATION, TRACK, GPS, HELP")
             }
         }
     }
 
     fun sendSms(context: Context, destination: String, message: String) {
-        if (destination.isBlank() || destination == "Unknown") return
+        val cleanDest = destination.replace("[^0-9+]".toRegex(), "")
+        if (cleanDest.isBlank() || destination == "Unknown") return
         try {
-            val smsManager = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                val subId = android.telephony.SubscriptionManager.getDefaultSmsSubscriptionId()
-                if (subId != android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+            val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                var subId = SubscriptionManager.getDefaultSmsSubscriptionId()
+                if (subId == SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    val subManager = context.getSystemService(SubscriptionManager::class.java)
+                    val activeList = runCatching { subManager?.activeSubscriptionInfoList }.getOrNull()
+                    if (!activeList.isNullOrEmpty()) {
+                        subId = activeList[0].subscriptionId
+                    }
+                }
+                if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
                     context.getSystemService(SmsManager::class.java)?.createForSubscriptionId(subId) ?: context.getSystemService(SmsManager::class.java)
                 } else {
                     context.getSystemService(SmsManager::class.java)
@@ -162,10 +184,19 @@ class SmsCommandReceiver : BroadcastReceiver() {
                 @Suppress("DEPRECATION")
                 SmsManager.getDefault()
             }
-            smsManager?.sendTextMessage(destination, null, message, null, null)
-            DebugLogger.log(context, "SmsCommandReceiver", "Sent SMS response to $destination: '$message'", force = true)
+            if (smsManager == null) {
+                DebugLogger.log(context, "SmsCommandReceiver", "Failed to send SMS: SmsManager unavailable", force = true)
+                return
+            }
+            val parts = smsManager.divideMessage(message)
+            if (parts.size > 1) {
+                smsManager.sendMultipartTextMessage(cleanDest, null, parts, null, null)
+            } else {
+                smsManager.sendTextMessage(cleanDest, null, message, null, null)
+            }
+            DebugLogger.log(context, "SmsCommandReceiver", "Sent SMS response to $cleanDest: '$message'", force = true)
         } catch (e: Exception) {
-            DebugLogger.log(context, "SmsCommandReceiver", "Failed to send SMS response to $destination: ${e.message}", force = true)
+            DebugLogger.log(context, "SmsCommandReceiver", "Failed to send SMS response to $cleanDest: ${e.message}", force = true)
         }
     }
 
@@ -189,10 +220,10 @@ class SmsCommandReceiver : BroadcastReceiver() {
             if (isAutoEnableAllowed) {
                 DebugLogger.log(context, "SmsCommandReceiver", "Auto-enable setting is ON. Enabling Location & Mobile Data in one go...", force = true)
                 enableLocationAndMobileData(context)
-                
+
                 // Wait 2 seconds for Location & Data hardware services to start up
                 DebugLogger.log(context, "SmsCommandReceiver", "Waiting 2s for hardware startup...", force = true)
-                kotlinx.coroutines.delay(2000L)
+                delay(2000L)
             } else {
                 DebugLogger.log(context, "SmsCommandReceiver", "Auto-enable setting is OFF. Skipping hardware toggle.", force = true)
             }
@@ -201,11 +232,11 @@ class SmsCommandReceiver : BroadcastReceiver() {
             isNetOn = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
             DebugLogger.log(context, "SmsCommandReceiver", "Post-startup Location State -> GPS: $isGpsOn, Network: $isNetOn", force = true)
 
-            val lastKnown = getLastKnownLocation(locationManager)
+            val lastKnown = getLastKnownLocation(context, locationManager)
 
-            // Attempt 1: Get initial location fix
+            // Attempt 1: Request fresh high accuracy fix (Fused client first, fallback to LocationManager)
             DebugLogger.log(context, "SmsCommandReceiver", "Attempt 1: Requesting high accuracy location fix...", force = true)
-            val attempt1Fix = requestFreshLocationFix(context, locationManager)
+            val attempt1Fix = getFusedLocationFix(context) ?: requestFreshLocationFix(context, locationManager)
             if (attempt1Fix != null) {
                 DebugLogger.log(context, "SmsCommandReceiver", "Attempt 1 Fix: Lat=${attempt1Fix.latitude}, Lng=${attempt1Fix.longitude}, Accuracy=${attempt1Fix.accuracy}m", force = true)
             } else {
@@ -214,18 +245,18 @@ class SmsCommandReceiver : BroadcastReceiver() {
 
             // Wait 2 seconds for GPS satellites to settle
             DebugLogger.log(context, "SmsCommandReceiver", "Waiting 2s for GPS satellite precision settling...", force = true)
-            kotlinx.coroutines.delay(2000L)
+            delay(2000L)
 
-            // Attempt 2: Get latest location fix after settling
+            // Attempt 2: Request settled latest fix
             DebugLogger.log(context, "SmsCommandReceiver", "Attempt 2 (Settled): Requesting latest location fix...", force = true)
-            val attempt2Fix = requestFreshLocationFix(context, locationManager)
+            val attempt2Fix = getFusedLocationFix(context) ?: requestFreshLocationFix(context, locationManager)
             if (attempt2Fix != null) {
                 DebugLogger.log(context, "SmsCommandReceiver", "Attempt 2 (Latest) Fix: Lat=${attempt2Fix.latitude}, Lng=${attempt2Fix.longitude}, Accuracy=${attempt2Fix.accuracy}m", force = true)
             } else {
                 DebugLogger.log(context, "SmsCommandReceiver", "Attempt 2: Timed out or no fix.", force = true)
             }
 
-            // Use the LATEST location fix after the second attempt (falling back to Attempt 1 or Last Known)
+            // Use the latest fix, falling back to Attempt 1 or Last Known
             val latestLocation = attempt2Fix ?: attempt1Fix ?: lastKnown
 
             if (latestLocation != null) {
@@ -245,6 +276,36 @@ class SmsCommandReceiver : BroadcastReceiver() {
         } catch (e: Exception) {
             sendSms(context, requesterNumber, "[SentinelShield] Failed: Location tracking error.")
             DebugLogger.log(context, "SmsCommandReceiver", "Location tracking error: ${e.message}", force = true)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private suspend fun getFusedLocationFix(context: Context): Location? {
+        return try {
+            if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                return null
+            }
+            val fusedClient = LocationServices.getFusedLocationProviderClient(context)
+            withTimeoutOrNull(4000L) {
+                suspendCancellableCoroutine { cont ->
+                    val cancellationTokenSource = CancellationTokenSource()
+                    cont.invokeOnCancellation {
+                        cancellationTokenSource.cancel()
+                    }
+                    fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.token)
+                        .addOnSuccessListener { loc ->
+                            if (cont.isActive) cont.resume(loc)
+                        }
+                        .addOnFailureListener {
+                            if (cont.isActive) cont.resume(null)
+                        }
+                        .addOnCanceledListener {
+                            if (cont.isActive) cont.resume(null)
+                        }
+                }
+            }
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -296,24 +357,20 @@ class SmsCommandReceiver : BroadcastReceiver() {
         var listener: LocationListener? = null
         return try {
             withTimeoutOrNull(4000L) {
-                suspendCoroutine { continuation ->
-                    var isResumed = false
-                    fun resumeOnce(loc: Location?) {
-                        if (!isResumed) {
-                            isResumed = true
-                            continuation.resume(loc)
-                        }
-                    }
-
+                suspendCancellableCoroutine { continuation ->
                     val locListener = object : LocationListener {
                         override fun onLocationChanged(loc: Location) {
-                            resumeOnce(loc)
+                            if (continuation.isActive) continuation.resume(loc)
                         }
                         override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
                         override fun onProviderEnabled(provider: String) {}
                         override fun onProviderDisabled(provider: String) {}
                     }
                     listener = locListener
+
+                    continuation.invokeOnCancellation {
+                        runCatching { locationManager.removeUpdates(locListener) }
+                    }
 
                     try {
                         var requestedAny = false
@@ -325,11 +382,11 @@ class SmsCommandReceiver : BroadcastReceiver() {
                             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0L, 0f, locListener, Looper.getMainLooper())
                             requestedAny = true
                         }
-                        if (!requestedAny) {
-                            resumeOnce(null)
+                        if (!requestedAny && continuation.isActive) {
+                            continuation.resume(null)
                         }
                     } catch (e: Exception) {
-                        resumeOnce(null)
+                        if (continuation.isActive) continuation.resume(null)
                     }
                 }
             }
@@ -341,19 +398,39 @@ class SmsCommandReceiver : BroadcastReceiver() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun getLastKnownLocation(locationManager: LocationManager): Location? {
-        return try {
+    private suspend fun getLastKnownLocation(context: Context, locationManager: LocationManager): Location? {
+        var bestLocation: Location? = null
+
+        // 1. Check FusedLocationProviderClient cache first (works even if LocationManager providers are empty)
+        try {
+            if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                val fusedClient = LocationServices.getFusedLocationProviderClient(context)
+                val fusedLoc = withTimeoutOrNull(1500L) {
+                    suspendCancellableCoroutine<Location?> { cont ->
+                        fusedClient.lastLocation
+                            .addOnSuccessListener { loc -> if (cont.isActive) cont.resume(loc) }
+                            .addOnFailureListener { if (cont.isActive) cont.resume(null) }
+                    }
+                }
+                if (fusedLoc != null) {
+                    bestLocation = fusedLoc
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 2. Check all enabled providers in LocationManager
+        try {
             val providers = locationManager.getProviders(true)
-            var bestLocation: Location? = null
             for (provider in providers) {
                 val l = locationManager.getLastKnownLocation(provider) ?: continue
                 if (bestLocation == null || l.accuracy < bestLocation.accuracy) {
                     bestLocation = l
                 }
             }
-            bestLocation
         } catch (e: Exception) {
-            null
+            // Best effort
         }
+
+        return bestLocation
     }
 }
