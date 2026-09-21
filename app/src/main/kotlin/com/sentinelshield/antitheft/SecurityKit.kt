@@ -84,9 +84,38 @@ object SecurityPreferences {
     private const val INTRUDER_VIDEO_DURATION = "intruder_video_duration"
     private const val DEBUG_LOGGING_ENABLED = "debug_logging_enabled"
     private const val FAKE_SHUTDOWN_ENABLED = "fake_shutdown_enabled"
+    private const val GOOGLE_DRIVE_EMAIL = "google_drive_email"
+    private const val GOOGLE_DRIVE_FOLDER_ID = "google_drive_folder_id"
+    private const val GOOGLE_DRIVE_SCOPE_GRANTED = "google_drive_scope_granted"
 
     private fun preferences(context: Context) =
         context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+
+    fun getGoogleDriveEmail(context: Context): String? = preferences(context).getString(GOOGLE_DRIVE_EMAIL, null)
+
+    fun setGoogleDriveEmail(context: Context, email: String?) {
+        if (email != null) {
+            preferences(context).edit().putString(GOOGLE_DRIVE_EMAIL, email).apply()
+        } else {
+            preferences(context).edit().remove(GOOGLE_DRIVE_EMAIL).putBoolean(GOOGLE_DRIVE_SCOPE_GRANTED, false).apply()
+        }
+    }
+
+    fun isGoogleDriveScopeGranted(context: Context): Boolean = preferences(context).getBoolean(GOOGLE_DRIVE_SCOPE_GRANTED, false)
+
+    fun setGoogleDriveScopeGranted(context: Context, granted: Boolean) {
+        preferences(context).edit().putBoolean(GOOGLE_DRIVE_SCOPE_GRANTED, granted).apply()
+    }
+
+    fun getGoogleDriveFolderId(context: Context): String? = preferences(context).getString(GOOGLE_DRIVE_FOLDER_ID, null)
+
+    fun setGoogleDriveFolderId(context: Context, folderId: String?) {
+        if (folderId != null) {
+            preferences(context).edit().putString(GOOGLE_DRIVE_FOLDER_ID, folderId).apply()
+        } else {
+            preferences(context).edit().remove(GOOGLE_DRIVE_FOLDER_ID).apply()
+        }
+    }
 
     fun isFakeShutdownEnabled(context: Context): Boolean = preferences(context).getBoolean(FAKE_SHUTDOWN_ENABLED, true)
 

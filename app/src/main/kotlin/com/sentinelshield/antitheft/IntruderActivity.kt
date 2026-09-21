@@ -140,10 +140,9 @@ class IntruderActivity : ComponentActivity() {
                     Log.d("IntruderActivity", "Photo capture succeeded: ${output.savedUri}")
                     com.sentinelshield.antitheft.utils.DebugLogger.log(this@IntruderActivity, "IntruderActivity", "Photo captured: ${output.savedUri}", force = true)
                     output.savedUri?.let { uri ->
+                        val fileName = "intruder_${name}.jpg"
                         CoroutineScope(Dispatchers.IO).launch {
-                            val path = uri.path ?: ""
-                            val file = java.io.File(path)
-                            com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.uploadFile(this@IntruderActivity, file, "image/jpeg")
+                            com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.uploadUri(applicationContext, uri, fileName, "image/jpeg")
                         }
                     }
                     if (intent.getBooleanExtra("IS_TEST_MODE", false)) {
@@ -214,10 +213,9 @@ class IntruderActivity : ComponentActivity() {
                             Log.d("IntruderActivity", "Video capture succeeded: ${recordEvent.outputResults.outputUri}")
                             com.sentinelshield.antitheft.utils.DebugLogger.log(this@IntruderActivity, "IntruderActivity", "Video captured: ${recordEvent.outputResults.outputUri}", force = true)
                             recordEvent.outputResults.outputUri.let { uri ->
+                                val fileName = "intruder_${name}.mp4"
                                 CoroutineScope(Dispatchers.IO).launch {
-                                    val path = uri.path ?: ""
-                                    val file = java.io.File(path)
-                                    com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.uploadFile(this@IntruderActivity, file, "video/mp4")
+                                    com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.uploadUri(applicationContext, uri, fileName, "video/mp4")
                                 }
                             }
                             if (intent.getBooleanExtra("IS_TEST_MODE", false)) {

@@ -8,6 +8,7 @@ captures/
 
 # Agent & workspace temp files
 .artifacts/
+.agents/
 HANDOFF.md
 
 # Local machine & environment configuration

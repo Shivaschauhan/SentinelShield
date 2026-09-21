@@ -2,6 +2,7 @@ package com.sentinelshield.antitheft
 
 import android.Manifest
 import android.app.KeyguardManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
@@ -60,7 +61,9 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         try {
             val account = task.getResult(com.google.android.gms.common.api.ApiException::class.java)
             if (account != null) {
+                com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.recordSuccessfulSignIn(this, account)
                 if (com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(account, com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.DRIVE_FILE_SCOPE)) {
+                    com.sentinelshield.antitheft.SecurityPreferences.setGoogleDriveScopeGranted(this, true)
                     Toast.makeText(this, "Connected to Google Drive as ${account.email}", Toast.LENGTH_LONG).show()
                     com.sentinelshield.antitheft.utils.DebugLogger.log(this, "MainActivity", "Google Drive connected: ${account.email}", force = true)
                     refreshState()
@@ -82,7 +85,7 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 Toast.makeText(this, "Google Sign-In cancelled.", Toast.LENGTH_SHORT).show()
             } else if (e.statusCode == 10) {
                 com.sentinelshield.antitheft.utils.DebugLogger.log(this, "MainActivity", "Google Sign-In Error 10 (DEVELOPER_ERROR): Package 'com.sentinelshield.antitheft' SHA-1 fingerprint is not registered in Google Cloud/Firebase Console.", force = true)
-                Toast.makeText(this, "Google Sign-In failed (Code 10)", Toast.LENGTH_SHORT).show()
+                showGoogleSignInError10Dialog()
             } else {
                 Toast.makeText(this, "Google Sign-In failed (Code ${e.statusCode})", Toast.LENGTH_LONG).show()
             }
@@ -92,11 +95,40 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         }
     }
 
+    private fun showGoogleSignInError10Dialog() {
+        val sha1 = com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.getSigningCertificateSha1(this)
+        val pkg = packageName
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Google Sign-In Setup Required (Code 10)")
+            .setMessage("Google Sign-In Error 10 (DEVELOPER_ERROR) occurs when your app's signing key is not registered in Google Cloud / Firebase Console.\n\n" +
+                    "Package Name:\n$pkg\n\n" +
+                    "SHA-1 Fingerprint:\n$sha1\n\n" +
+                    "To fix:\n" +
+                    "1. Open console.cloud.google.com -> Credentials\n" +
+                    "2. Create an OAuth 2.0 Client ID for Android with the package name and SHA-1 above.\n" +
+                    "3. Enable the Google Drive API in API Library.")
+            .setPositiveButton("Copy SHA-1") { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("SHA-1", sha1))
+                Toast.makeText(this, "SHA-1 copied to clipboard!", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Dismiss", null)
+            .show()
+    }
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == GOOGLE_DRIVE_PERMISSION_REQ_CODE) {
-            val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(this)
-            if (account != null && com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(account, com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.DRIVE_FILE_SCOPE)) {
+            val account = (if (data != null) {
+                runCatching {
+                    com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(data)
+                        .getResult(com.google.android.gms.common.api.ApiException::class.java)
+                }.getOrNull()
+            } else null) ?: com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(this)
+
+            if (account != null && (resultCode == RESULT_OK || com.google.android.gms.auth.api.signin.GoogleSignIn.hasPermissions(account, com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.DRIVE_FILE_SCOPE))) {
+                com.sentinelshield.antitheft.SecurityPreferences.setGoogleDriveScopeGranted(this, true)
+                com.sentinelshield.antitheft.utils.GoogleDriveSyncManager.recordSuccessfulSignIn(this, account)
                 Toast.makeText(this, "Google Drive permission granted: ${account.email}", Toast.LENGTH_LONG).show()
                 com.sentinelshield.antitheft.utils.DebugLogger.log(this, "MainActivity", "Google Drive permission granted for ${account.email}", force = true)
                 refreshState()

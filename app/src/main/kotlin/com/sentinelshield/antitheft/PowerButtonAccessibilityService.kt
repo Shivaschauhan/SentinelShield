@@ -75,7 +75,7 @@ class PowerButtonAccessibilityService : AccessibilityService() {
                         handler.postDelayed(powerLongPressRunnable!!, 1200L)
                     }
 
-                    if (event.isLongPress || event.repeatCount > 2 || (event.flags and KeyEvent.FLAG_LONG_PRESS) != 0 || isLocked) {
+                    if (event.isLongPress || event.repeatCount > 2 || (event.flags and KeyEvent.FLAG_LONG_PRESS) != 0) {
                         powerLongPressRunnable?.let { handler.removeCallbacks(it) }
                         powerLongPressRunnable = null
                         DebugLogger.log(this, "PowerAccessibility", "Power button long press/repeat -> Launching Fake Power Menu", force = true)

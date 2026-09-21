@@ -23,6 +23,11 @@ class SimChangeReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == "android.intent.action.SIM_STATE_CHANGED") {
+            if (!SecurityPreferences.isArmed(context)) {
+                com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "SIM_STATE_CHANGED ignored: SIM Tamper Monitor is DISARMED.")
+                return
+            }
+
             val simStateExtra = intent.getStringExtra("ss") ?: "UNKNOWN"
             com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "SIM_STATE_CHANGED broadcast received (Extra State: $simStateExtra)", force = true)
 
@@ -69,8 +74,14 @@ class SimChangeReceiver : BroadcastReceiver() {
                         SecurityPreferences.setSavedSubscriptionIds(context, currentIds)
                         com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "First-time setup: Registered initial SIM snapshot: $currentIds", force = true)
                     } else {
-                        // Check if any new SIM or slot arrangement was detected
-                        val newSims = currentIds.subtract(savedIds)
+                        // Check if any new SIM or slot arrangement was detected.
+                        // Backwards-compatible: accepts composite "slotX_subY" or legacy "Y".
+                        val newSims = currentIds.filterNot { id ->
+                            savedIds.contains(id) || activeSubscriptionInfoList.any { info ->
+                                "slot${info.simSlotIndex}_sub${info.subscriptionId}" == id && savedIds.contains(info.subscriptionId.toString())
+                            }
+                        }.toSet()
+
                         if (newSims.isNotEmpty()) {
                             com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "ALERT: New SIM or slot swap detected! New SIMs: $newSims", force = true)
                             SecurityPreferences.setSavedSubscriptionIds(context, currentIds)
@@ -88,6 +99,10 @@ class SimChangeReceiver : BroadcastReceiver() {
                                 sendAlertSms(context, newCarrierName, newPhoneNumber)
                             }
                         } else {
+                            // Seamlessly upgrade legacy subId-only format to composite format
+                            if (savedIds != currentIds) {
+                                SecurityPreferences.setSavedSubscriptionIds(context, currentIds)
+                            }
                             com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "SIM state verified. Current SIMs match trusted saved snapshot.", force = true)
                         }
                     }
@@ -117,8 +132,9 @@ class SimChangeReceiver : BroadcastReceiver() {
 
     private fun sendAlertSms(context: Context, carrierName: String, phoneNumber: String) {
         val simTamperContact = SecurityPreferences.getSimTamperContact(context)
-        
-        if (simTamperContact.isBlank()) {
+        val cleanContact = simTamperContact.replace("[^0-9+]".toRegex(), "")
+
+        if (cleanContact.isBlank()) {
             com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "Alert SMS skipped: Emergency contact is not set in SIM Tamper settings.", force = true)
             return
         }
@@ -127,12 +143,33 @@ class SimChangeReceiver : BroadcastReceiver() {
                 "New Carrier: $carrierName\n" +
                 "New Phone Number: $phoneNumber"
 
-        val smsManager = context.getSystemService(SmsManager::class.java)
         try {
-            smsManager?.sendTextMessage(simTamperContact, null, message, null, null)
-            com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "Emergency SIM alert SMS sent successfully to $simTamperContact!", force = true)
+            val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val subId = SubscriptionManager.getDefaultSmsSubscriptionId()
+                if (subId != SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                    context.getSystemService(SmsManager::class.java)?.createForSubscriptionId(subId) ?: context.getSystemService(SmsManager::class.java)
+                } else {
+                    context.getSystemService(SmsManager::class.java)
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
+
+            if (smsManager == null) {
+                com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "SmsManager unavailable on device.", force = true)
+                return
+            }
+
+            val parts = smsManager.divideMessage(message)
+            if (parts.size > 1) {
+                smsManager.sendMultipartTextMessage(cleanContact, null, parts, null, null)
+            } else {
+                smsManager.sendTextMessage(cleanContact, null, message, null, null)
+            }
+            com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "Emergency SIM alert SMS sent successfully to $cleanContact!", force = true)
         } catch (e: Exception) {
-            com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "Failed to send emergency SIM alert SMS to $simTamperContact: ${e.message}", force = true)
+            com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SimChangeReceiver", "Failed to send emergency SIM alert SMS to $cleanContact: ${e.message}", force = true)
         }
     }
 }

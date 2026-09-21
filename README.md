@@ -1,107 +1,128 @@
 <div align="center">
 
-# <img src="docs/logo.svg" width="48" height="48" align="center"> SentinelShield
+<img src="assets/logo.svg" width="72" height="72" alt="SentinelShield Logo" />
 
-### Advanced Open-Source Android Anti-Theft & Device Protection Suite
+# SentinelShield
+
+### Open-source Android anti-theft and device protection suite
 
 [![Android Min SDK](https://img.shields.io/badge/Min%20SDK-26%20%28Android%208.0%2B%29-brightgreen.svg)](https://developer.android.com)
 [![Target SDK](https://img.shields.io/badge/Target%20SDK-35%20%28Android%2015%29-blue.svg)](https://developer.android.com)
 [![Language](https://img.shields.io/badge/Language-Kotlin%20100%25-purple.svg)](https://kotlinlang.org/)
 [![UI Framework](https://img.shields.io/badge/UI-Jetpack%20Compose-darkgreen.svg)](https://developer.android.com/jetpack/compose)
 
-*SentinelShield is a privacy-first, enterprise-grade Android anti-theft security solution designed to counter modern phone theft tactics, prevent physical shutdown attempts, capture intruder evidence, and provide remote command capabilities.*
+*SentinelShield is an open-source Android security app that counters common phone theft tactics: physical power-offs, charger disconnects, pocket snatches, and SIM swaps. It captures evidence locally and lets you control the device remotely over SMS without relying on external tracking servers.*
 
 </div>
 
 ---
 
-## Key Security Features
+## Features
 
-### Fake Power Menu & Decoy Shutdown Interception
-* **Pre-Emptive Power Interception:** Intercepts physical long-press power button events before the native Android system power menu pops up.
-* **Realistic Stock Power Dialog:** Displays a stock Pixel-style power options menu (**Power off**, **Restart**, **Lockdown**, **Emergency**).
-* **Decoy Pitch-Black Screen:** When a thief taps "Power off" or "Restart", SentinelShield executes a heavy haptic vibration pulse and transitions to a pitch-black fullscreen overlay (`DecoyScreenActivity`), tricking the thief into believing the device powered down while all protection services remain 100% active in the background.
+### Fake power menu and decoy shutdown
+* Intercepts physical power button long-presses before the system power dialog appears.
+* Shows a realistic stock Pixel power menu with Power off, Restart, Lockdown, and Emergency options.
+* Tapping Power off or Restart triggers a haptic vibration and switches to a pitch-black fullscreen overlay (`DecoyScreenActivity`). The device looks powered down while background security monitors stay active.
 
-### Pocket Snatch Protection
-* **Sensor-Based Detection:** Utilizes device proximity and accelerometer motion sensors to detect unauthorized removal from pockets or bags.
-* **Configurable Arming & Grace Period:** Allows customizable arming delays (5s) and disarm grace periods (3s) to prevent false alerts.
-* **Emergency Alarm:** Triggers an un-silenceable max-volume siren audio loop (`SecurityAlertService`) with optional strobe flash alerts.
+### Pocket snatch detection
+* Uses proximity and accelerometer sensors to detect when the phone is pulled from a pocket or bag.
+* Configurable 5-second arming delay and 3-second grace period prevent false alarms.
+* Fires a max-volume siren (`SecurityAlertService`) with an optional camera strobe flash.
 
-### Charging Disconnect Monitor
-* **Hardware Power Monitoring:** Monitors USB/wireless hardware power connection status in real-time.
-* **Immediate Unplug Alert:** Triggers an immediate alarm if the charging cable is disconnected while armed.
+### Charging disconnect monitor
+* Watches USB and wireless charging connections in real time.
+* Triggers an alarm immediately if the charging cable is unplugged while armed.
 
-### SIM Tamper & State Monitor
-* **SIM Change Detection:** Listens to hardware SIM state broadcasts via `TelephonyManager` and `SubscriptionManager`.
-* **Instant Emergency Notification:** Instantly raises security alerts and sends SMS notifications if a SIM card is removed or hot-swapped.
+### SIM tamper detection
+* Tracks SIM subscription state through `TelephonyManager` and `SubscriptionManager`.
+* Detects SIM card removals and slot swaps, sending an SMS alert to a designated backup contact.
 
-### Intruder Selfie & Evidence Capture
-* **CameraX Stealth Recording:** Captures stealth front-camera photos or 3-second HD videos when invalid lockscreen password attempts occur.
-* **Local & Cloud Storage:** Automatically stores timestamped evidence locally and queues background uploads.
+### Intruder selfie and evidence capture
+* Uses CameraX to capture a front-camera photo or a 3-second HD video after two failed lock screen attempts.
+* Stores timestamped files in local storage (`DCIM/SentinelShield`) and queues them for Google Drive backup.
 
-### Google Drive Cloud Backup
-* **Cloud Integration:** Seamless integration with Google Drive API.
-* **Automatic Evidence Sync:** Automatically syncs intruder photos, videos, and security diagnostic logs to a dedicated `SentinelShield` cloud folder.
+### Google Drive cloud backup
+* Backs up intruder photos, videos, and diagnostic logs to a dedicated `SentinelShield` folder in your personal Google Drive.
+* Uses OAuth 2.0 with minimal `drive.file` scope.
 
-### Remote SMS Control Suite
-* **SMS Command Interception:** Intercepts incoming SMS commands sent from user-authorized trusted contact numbers.
-* **Multi-Alias Command Set:**
-  * **Screen Lock:** `LOCK`, `LOCKDOWN`, or `LOST` — Instantly locks the device screen via Device Admin Policy.
-  * **Siren Alarm:** `SIREN`, `ALARM`, `SOUND`, or `RING` — Triggers the max-volume emergency siren remotely with continuous volume override.
-  * **GPS Location:** `LOCATION`, `TRACK`, `GPS`, `LOCATE`, or `WHERE` — Automatically enables Location Services and Mobile Data in one go (via `WRITE_SECURE_SETTINGS`), executes a 2-second settling window for GPS satellite locking, and sends back an official Google Maps Location Sharing link (`https://maps.google.com/maps?q=loc:LAT,LNG&z=17`).
-* **Auto Location & Data Toggle:** Includes ADB system permission helper for `WRITE_SECURE_SETTINGS` (`adb shell pm grant com.sentinelshield.antitheft android.permission.WRITE_SECURE_SETTINGS`) with copiable command dialogs.
-* **Remote SMS Diagnostics Panel:** In-app diagnostic card to verify SMS permissions, secure settings status, and log history.
+### Remote SMS control
+* Accepts commands from trusted contact numbers even when offline or without mobile data.
+* `LOCK`, `LOCKDOWN`, or `LOST`: locks the screen through Device Admin policy.
+* `SIREN`, `ALARM`, `SOUND`, or `RING`: sounds the emergency siren at max volume.
+* `STOP`, `SILENCE`, `DISARM`, or `MUTE`: silences an active alarm remotely.
+* `LOCATION`, `TRACK`, `GPS`, `LOCATE`, or `WHERE`: enables Location and Mobile Data (via `WRITE_SECURE_SETTINGS`), settles satellite fixes, and texts back a Google Maps link (`https://maps.google.com/maps?q=loc:LAT,LNG&z=17`).
+* Includes an in-app setup helper and copyable ADB command for granting `WRITE_SECURE_SETTINGS`:
+  ```bash
+  adb shell pm grant com.sentinelshield.antitheft android.permission.WRITE_SECURE_SETTINGS
+  ```
 
-### WearOS Smartwatch Companion
-* **Wrist Companion Module:** Features a dedicated WearOS companion module (`:wear`) for remote alarm triggering, status monitoring, and haptic alerts right from your wrist.
-
----
-
-## Design System & User Experience
-
-Built from the ground up using **Material 3 & Jetpack Compose**:
-* **Dynamic Color Tokens:** Supports Android Material You dynamic color extraction and custom HSL color palettes.
-* **Pure Dark & AMOLED Modes:** Optimized for OLED displays to save battery and offer high-contrast night viewing.
-* **Haptic & Audio Engineering:** Features continuous volume enforcement (polling every 500ms), `PARTIAL_WAKE_LOCK` CPU hold, transient exclusive audio focus, and self-healing `MediaPlayer` error recovery.
+### Wear OS companion
+* Smartwatch module (`:wear`) lets you trigger an emergency SOS alarm and view protection status from your wrist.
 
 ---
 
-## Architecture & Technology Stack
+## Design and interface
 
-```
-   ┌─────────────────────────────────────────────────────────┐
-   │                  SentinelShield Core                    │
-   └────────────────────────────┬────────────────────────────┘
-                                │
-        ┌───────────────────────┼───────────────────────┐
-        ▼                       ▼                       ▼
-┌───────────────┐       ┌───────────────┐       ┌───────────────┐
-│ Jetpack       │       │ Foreground    │       │ Hardware      │
-│ Compose UI    │       │ Services      │       │ Interceptors  │
-│ (M3 Theme)    │       │ (Sticky FGS)  │       │ (Accessibility│
-└───────────────┘       └───────────────┘       │  & Sensors)   │
-                                                └───────────────┘
+The UI is built with Jetpack Compose and Material 3:
+* Supports Material You dynamic colors along with custom theme palettes.
+* Pure dark and AMOLED modes save battery on OLED screens.
+* Audio playback enforces maximum alarm volume every 500ms, holds a CPU `PARTIAL_WAKE_LOCK`, and requests transient exclusive audio focus.
+
+---
+
+## Architecture and tech stack
+
+```mermaid
+flowchart TD
+    subgraph Triggers ["Detection & Triggers"]
+        T1["Motion & Snatch Sensors"]
+        T2["Power Button & Charger Events"]
+        T3["Failed Unlock & SIM Tamper"]
+        T4["Offline SMS Commands"]
+    end
+
+    subgraph Core ["SentinelShield Core Engine"]
+        S1["Security Monitor Service"]
+        S2["Alert & Siren Controller"]
+        S3["CameraX Capture Engine"]
+    end
+
+    subgraph Actions ["Response & Cloud Sync"]
+        R1["Pitch-Black Decoy Screen"]
+        R2["Max-Volume Siren & Strobe"]
+        R3["Google Drive Cloud Backup"]
+        R4["Wear OS Wrist Alerts"]
+    end
+
+    T1 --> S1
+    T2 --> S1
+    T4 --> S1
+    T3 --> S3
+    S1 --> S2
+    S1 --> R1
+    S2 --> R2
+    S2 --> R4
+    S3 --> R3
 ```
 
-* **Architecture Pattern:** MVVM (Model-View-ViewModel) + Clean Architecture.
-* **UI Engine:** 100% Jetpack Compose with Material 3 components.
-* **Background Processing:** Android Foreground Services (`START_STICKY`, `FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK`) with CPU `WakeLock` protection.
-* **Hardware Interception:** Custom `AccessibilityService` (`PowerButtonAccessibilityService`) for global key event listening.
-* **Asynchronous Execution:** Kotlin Coroutines & `StateFlow`.
+* **Architecture:** MVVM and Clean Architecture with Kotlin Coroutines and StateFlow.
+* **UI:** Jetpack Compose with Material 3 components and Navigation Compose.
+* **Background services:** Android Foreground Services (`START_STICKY`, `FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK`) with CPU `WakeLock` management.
+* **Hardware interception:** Custom `AccessibilityService` (`PowerButtonAccessibilityService`) for global power key events.
 * **Hardware APIs:** CameraX, SensorManager, TelephonyManager, AudioManager, FusedLocationProviderClient.
 
 ---
 
-## Building & Running from Source
+## Building and running from source
 
 ### Prerequisites
-* **Android Studio:** Ladybug (2024.2.1+) or newer.
-* **JDK:** Version 17+.
-* **Android SDK:** API Level 35 (Android 15) installed.
+* Android Studio Ladybug (2024.2.1) or newer
+* JDK 17+
+* Android SDK 35 (Android 15)
 
-### Step-by-Step Setup
+### Setup
 
-1. **Clone the Repository:**
+1. **Clone the repository:**
    ```bash
    git clone git@github.com:ShivaSchauhan/SentinelShield.git
    cd SentinelShield
@@ -110,20 +131,20 @@ Built from the ground up using **Material 3 & Jetpack Compose**:
 2. **Open in Android Studio:**
    * Launch Android Studio, select **Open**, and navigate to the project directory.
 
-3. **Build Debug APK via Command Line:**
+3. **Build debug APK:**
    ```bash
    ./gradlew assembleDebug
    ```
 
-4. **Install on Connected Device / Emulator:**
+4. **Install on device or emulator:**
    ```bash
    ./gradlew installDebug
    ```
 
 ---
 
-## Privacy & Security Commitment
+## Privacy and security
 
-* **Zero Telemetry:** SentinelShield contains zero third-party tracking, analytics, or data harvesting SDKs.
-* **Local-First Data Storage:** All security logs, photos, and configurations remain strictly on your device or your personal Google Drive account.
-* **Explicit Disarming:** Alarms can only be disarmed when the legitimate owner unlocks the device via native PIN, Pattern, or Fingerprint authentication.
+* **No telemetry:** SentinelShield includes no third-party tracking, analytics, or remote data collection libraries.
+* **Local storage:** Security logs, photos, and settings stay on your device or in your personal Google Drive account.
+* **Owner authentication:** Alarms require native PIN, pattern, or biometric unlock to disarm.

@@ -1017,8 +1017,8 @@ fun SimTamperSettingsScreen(
                 onClick = {
                     try {
                         val subManager = context.getSystemService(android.telephony.SubscriptionManager::class.java)
-                        val activeSubs = subManager.activeSubscriptionInfoList
-                        val currentIds = activeSubs?.map { it.subscriptionId.toString() }?.toSet() ?: emptySet()
+                        val activeSubs = subManager?.activeSubscriptionInfoList
+                        val currentIds = activeSubs?.map { "slot${it.simSlotIndex}_sub${it.subscriptionId}" }?.toSet() ?: emptySet()
                         com.sentinelshield.antitheft.SecurityPreferences.setSavedSubscriptionIds(context, currentIds)
                         android.widget.Toast.makeText(context, "Registered ${currentIds.size} current SIM(s) as trusted.", android.widget.Toast.LENGTH_SHORT).show()
                     } catch (e: SecurityException) {

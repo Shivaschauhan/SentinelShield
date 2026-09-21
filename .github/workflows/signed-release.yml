@@ -2,9 +2,33 @@ name: Build signed release APK
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release Tag (e.g. v0.1.0)'
+        required: true
+        default: 'v0.1.0'
+        type: string
+      release_title:
+        description: 'Release Title (optional, defaults to Release Tag)'
+        required: false
+        default: ''
+        type: string
+      release_notes:
+        description: 'Release Notes / Description (optional)'
+        required: false
+        default: ''
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        default: false
+        type: boolean
+  push:
+    tags:
+      - 'v*'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-signed-release:
@@ -13,6 +37,18 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Determine Release Tag
+        id: release_info
+        run: |
+          if [ -n "${{ inputs.release_tag }}" ]; then
+            TAG="${{ inputs.release_tag }}"
+          elif [ -n "${{ github.ref_name }}" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="v0.1.0"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -52,7 +88,43 @@ jobs:
             -PRELEASE_KEY_PASSWORD="$SIGNING_KEY_PASSWORD"
 
       - name: Rename APK
-        run: mv app/build/outputs/apk/release/app-release.apk SentinelShield.apk
+        run: |
+          mv app/build/outputs/apk/release/app-release.apk SentinelShield.apk
+          cp SentinelShield.apk "SentinelShield-${{ steps.release_info.outputs.tag }}.apk"
+
+      - name: Prepare Release Notes
+        id: release_notes_gen
+        env:
+          CUSTOM_NOTES: ${{ inputs.release_notes }}
+          TAG_NAME: ${{ steps.release_info.outputs.tag }}
+        run: |
+          if [ -n "$CUSTOM_NOTES" ]; then
+            printf "%s\n" "$CUSTOM_NOTES" > release_body.md
+          else
+            cat << EOF > release_body.md
+          ### 🛡️ SentinelShield Anti-Theft Suite $TAG_NAME
+
+          Production release build. Direct APK downloads are available below:
+
+          * **SentinelShield.apk** (Direct installation package)
+          * **SentinelShield-$TAG_NAME.apk** (Versioned release package)
+          EOF
+          fi
+
+      - name: Publish Direct APK to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: ${{ inputs.release_title != '' && inputs.release_title || steps.release_info.outputs.tag }}
+          body_path: release_body.md
+          draft: false
+          prerelease: ${{ inputs.prerelease || false }}
+          generate_release_notes: false
+          files: |
+            SentinelShield.apk
+            SentinelShield-${{ steps.release_info.outputs.tag }}.apk
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
