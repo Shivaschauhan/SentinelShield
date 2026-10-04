@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Background Squircle -->
+    <path android:pathData="M50,5 C10,5 5,10 5,50 C5,90 10,95 50,95 C90,95 95,90 95,50 C95,10 90,5 50,5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="5"
+                android:startY="5"
+                android:endX="95"
+                android:endY="95">
+                <item android:color="#FFECEFF1" android:offset="0.0" />
+                <item android:color="#FFCFD8DC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- True Power Icon (Shifted and glitched) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M47,25 v20"
+        android:strokeAlpha="0.5"
+        android:strokeLineCap="round"
+        android:strokeWidth="8">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="43"
+                android:startY="25"
+                android:endX="51"
+                android:endY="45">
+                <item android:color="#FFFF1744" android:offset="0.0" />
+                <item android:color="#FFD50000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M32,35 a22,22 0 1,0 30,0"
+        android:strokeAlpha="0.5"
+        android:strokeLineCap="round"
+        android:strokeWidth="8">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="25"
+                android:startY="35"
+                android:endX="69"
+                android:endY="74">
+                <item android:color="#FFFF1744" android:offset="0.0" />
+                <item android:color="#FFD50000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Fake/Decoy Power Icon (Main) -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M53,25 v20"
+        android:strokeLineCap="round"
+        android:strokeWidth="8">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="49"
+                android:startY="25"
+                android:endX="57"
+                android:endY="45">
+                <item android:color="#FF263238" android:offset="0.0" />
+                <item android:color="#FF000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M38,35 a22,22 0 1,0 30,0"
+        android:strokeLineCap="round"
+        android:strokeWidth="8">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="31"
+                android:startY="35"
+                android:endX="75"
+                android:endY="74">
+                <item android:color="#FF263238" android:offset="0.0" />
+                <item android:color="#FF000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Glitch cutlines across the icon (erases pieces) -->
+    <path android:pathData="M25,45 H75 V49 H25 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="25"
+                android:startY="45"
+                android:endX="75"
+                android:endY="49">
+                <item android:color="#FFECEFF1" android:offset="0.0" />
+                <item android:color="#FFCFD8DC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M35,60 H80 V63 H35 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="35"
+                android:startY="60"
+                android:endX="80"
+                android:endY="63">
+                <item android:color="#FFECEFF1" android:offset="0.0" />
+                <item android:color="#FFCFD8DC" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Artifact pieces off to the side -->
+    <path android:pathData="M20,45 H35 V49 H20 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="20"
+                android:startY="45"
+                android:endX="35"
+                android:endY="49">
+                <item android:color="#FF263238" android:offset="0.0" />
+                <item android:color="#FF000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M65,60 H80 V63 H65 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="65"
+                android:startY="60"
+                android:endX="80"
+                android:endY="63">
+                <item android:color="#FFFF1744" android:offset="0.0" />
+                <item android:color="#FFD50000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M30,28 H35 V31 H30 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="30"
+                android:startY="28"
+                android:endX="35"
+                android:endY="31">
+                <item android:color="#FF263238" android:offset="0.0" />
+                <item android:color="#FF000000" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

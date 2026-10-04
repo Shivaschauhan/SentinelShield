@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.SimCard
 import androidx.compose.material.icons.filled.Sms
@@ -61,11 +62,25 @@ fun HomeScreen(
 ) {
     var showSmsInfoDialog by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val lifecycleTrigger = rememberLifecycleTrigger()
+    val safeZoneVersion = rememberSafeZoneVersion()
+    val effective = remember(safeZoneVersion, lifecycleTrigger, isPocketArmed, isChargingArmed) {
+        com.sentinelshield.antitheft.ProtectionController.effective(context)
+    }
     val powerManager = context.getSystemService(android.os.PowerManager::class.java)
     val hasPhonePermission = context.checkSelfPermission(android.Manifest.permission.READ_PHONE_STATE) == android.content.pm.PackageManager.PERMISSION_GRANTED
     val hasNotificationPermission = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU ||
             context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
     val hasBatteryExemption = android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M || powerManager.isIgnoringBatteryOptimizations(context.packageName)
+    val hasAccessibilityAccess = remember(lifecycleTrigger) {
+        android.provider.Settings.Secure.getString(
+            context.contentResolver,
+            android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        )?.contains(context.packageName) == true
+    }
+    var isFakeShutdownEnabled by remember(lifecycleTrigger) {
+        mutableStateOf(com.sentinelshield.antitheft.SecurityPreferences.isFakeShutdownEnabled(context))
+    }
 
     Scaffold(
         topBar = {
@@ -75,17 +90,11 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
+                        androidx.compose.foundation.Image(
+                            painter = androidx.compose.ui.res.painterResource(id = com.sentinelshield.antitheft.R.drawable.ic_shield_3d),
+                            contentDescription = "Sentinel Shield Logo",
                             modifier = Modifier.size(36.dp)
-                        ) {
-                            androidx.compose.foundation.Image(
-                                painter = androidx.compose.ui.res.painterResource(id = com.sentinelshield.antitheft.R.drawable.ic_shield_3d),
-                                contentDescription = null,
-                                modifier = Modifier.padding(8.dp)
-                            )
-                        }
+                        )
                         Text(
                             text = "Sentinel Shield",
                             style = MaterialTheme.typography.titleLarge,
@@ -117,8 +126,7 @@ fun HomeScreen(
                     FeatureCard(
                         title = "SIM Tamper Monitor",
                         description = "Foreground service listening for SIM card removal and state changes.",
-                        icon = Icons.Default.SimCard,
-                        iconColor = MaterialTheme.colorScheme.secondary,
+                        iconRes = com.sentinelshield.antitheft.R.drawable.ic_feature_sim_tamper,
                         isChecked = isArmed,
                         onCheckedChange = { checked ->
                             if (checked && (!hasPhonePermission || !hasNotificationPermission)) {
@@ -136,9 +144,13 @@ fun HomeScreen(
                     FeatureCard(
                         title = "Pocket Snatch Protection",
                         description = "Proximity sensor listener to trigger alarm when removed from pocket.",
-                        icon = Icons.Default.Vibration,
-                        iconColor = MaterialTheme.colorScheme.tertiary,
+                        iconRes = com.sentinelshield.antitheft.R.drawable.ic_feature_pocket_snatch,
                         isChecked = isPocketArmed,
+                        statusBadgeText = when {
+                            effective.pocketPausedByZone -> "Paused at home"
+                            effective.pocketArmedByZone -> "Armed by Safe Zones"
+                            else -> null
+                        },
                         onCheckedChange = { checked ->
                             if (checked && (!hasNotificationPermission || !hasBatteryExemption)) {
                                 val missing = if (!hasNotificationPermission) "notification" else "battery"
@@ -155,9 +167,13 @@ fun HomeScreen(
                     FeatureCard(
                         title = "Charging Monitor",
                         description = "Triggers alarm if charger is unplugged.",
-                        icon = Icons.Default.BatteryChargingFull,
-                        iconColor = MaterialTheme.colorScheme.primary,
+                        iconRes = com.sentinelshield.antitheft.R.drawable.ic_feature_charger_disconnect,
                         isChecked = isChargingArmed,
+                        statusBadgeText = when {
+                            effective.chargingPausedByZone -> "Paused at home"
+                            effective.chargingArmedByZone -> "Armed by Safe Zones"
+                            else -> null
+                        },
                         onCheckedChange = { checked ->
                             if (checked && !hasNotificationPermission) {
                                 onNavigateToPermissions("notification")
@@ -173,8 +189,7 @@ fun HomeScreen(
                     FeatureCard(
                         title = "Remote SMS Control",
                         description = "Send commands via SMS from trusted contacts.",
-                        icon = Icons.Default.Sms,
-                        iconColor = MaterialTheme.colorScheme.primary,
+                        iconRes = com.sentinelshield.antitheft.R.drawable.ic_feature_remote_sms,
                         isChecked = isSmsControlArmed,
                         onCheckedChange = { checked ->
                             val hasSmsPerm = context.checkSelfPermission(android.Manifest.permission.SEND_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED
@@ -201,6 +216,22 @@ fun HomeScreen(
             item {
                 RoundedCardContainer {
                     FeatureCard(
+                        title = "Decoy Power Off",
+                        description = "Intercepts the lock screen power menu with a realistic fake shutdown decoy.",
+                        iconRes = com.sentinelshield.antitheft.R.drawable.ic_feature_decoy_power,
+                        isChecked = hasAccessibilityAccess && isFakeShutdownEnabled,
+                        onCheckedChange = { checked ->
+                            if (checked && !hasAccessibilityAccess) {
+                                onNavigateToPermissions("accessibility")
+                            } else {
+                                isFakeShutdownEnabled = checked
+                                com.sentinelshield.antitheft.SecurityPreferences.setFakeShutdownEnabled(context, checked)
+                            }
+                        },
+                        onClick = onOpenScreenShield
+                    )
+
+                    FeatureCard(
                         title = "Intruder Selfie",
                         description = "Captures an image or video if the lock screen password is failed twice.",
                         icon = Icons.Default.CameraAlt,
@@ -212,6 +243,23 @@ fun HomeScreen(
                         onClick = {
                             navController.navigate(Screen.IntruderSettings.route)
                         }
+                    )
+                }
+            }
+
+            item {
+                CategorySectionHeader(title = "Smart Automation")
+            }
+            item {
+                val zoneStatus = remember(safeZoneVersion, lifecycleTrigger) { safeZoneUiStatus(context) }
+                RoundedCardContainer {
+                    FeatureCard(
+                        title = "Safe Zones",
+                        description = zoneStatus.detail,
+                        icon = Icons.Default.LocationOn,
+                        statusBadgeText = zoneStatus.badge,
+                        statusBadgeColor = safeZoneToneColor(zoneStatus.tone),
+                        onClick = { navController.navigate(Screen.SafeZones.route) }
                     )
                 }
             }

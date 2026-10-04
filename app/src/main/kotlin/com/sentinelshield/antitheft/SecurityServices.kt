@@ -81,10 +81,8 @@ class SecurityAlertService : Service() {
             if (intent?.action == Intent.ACTION_USER_PRESENT) {
                 // Legitimate device owner unlocked the phone via native lockscreen (PIN/Pattern/Fingerprint)
                 com.sentinelshield.antitheft.utils.DebugLogger.log(context, "SecurityAlertService", "Alarm disarmed via native phone unlock.", force = true)
-                SecurityPreferences.setOneTimeChargingArmed(context, false)
-                SecurityPreferences.setPocketArmed(context, false)
+                ProtectionController.ownerDisarmedAlarm(context)
                 stopSelf()
-                SecurityMonitorService.start(context)
                 android.widget.Toast.makeText(context, "Alarm Disarmed", android.widget.Toast.LENGTH_SHORT).show()
             }
         }
@@ -369,6 +367,14 @@ class SecurityMonitorService : Service() {
     private var lastSimStates: IntArray? = null
     private var receiverRegistered = false
 
+    private var wifiTracker: com.sentinelshield.antitheft.safezone.HomeWifiTracker? = null
+    private var locationReceiver: BroadcastReceiver? = null
+    private var locationReceiverRegistered = false
+    private val zoneTick = Runnable {
+        ProtectionController.refreshZone(this)
+        scheduleZoneTick()
+    }
+
     private var sensorManager: SensorManager? = null
     private var proximitySensor: Sensor? = null
     private var accelerometer: Sensor? = null
@@ -491,14 +497,12 @@ class SecurityMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val isSimArmed = SecurityPreferences.isArmed(this)
-        val isPocketArmed = SecurityPreferences.isPocketArmed(this)
-        val isChargingMonitorActive = SecurityPreferences.isChargingMonitorActive(this)
+        runCatching { ProtectionController.refreshZone(this) }
+        val effective = ProtectionController.effective(this)
+        val safeZoneActive = com.sentinelshield.antitheft.safezone.SafeZoneStore.isActive(this)
 
-        if (!isSimArmed && !isPocketArmed && !isChargingMonitorActive) {
-            stopSelf()
-            return START_NOT_STICKY
-        }
+        // Always enter the foreground first: stopping before startForeground() after
+        // startForegroundService() crashes the app on Android 8+.
         SecurityNotifier.createChannels(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startForeground(
@@ -510,23 +514,31 @@ class SecurityMonitorService : Service() {
             startForeground(SecurityNotifier.MONITOR_ID, SecurityNotifier.monitorNotification(this))
         }
 
-        if (isSimArmed) {
+        if (!effective.anyMonitor && !safeZoneActive) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        if (effective.sim) {
             initializeMonitoring()
         } else {
             stopSimMonitoring()
         }
 
-        if (isPocketArmed) {
-            initializePocketMonitoring()
-        } else {
-            stopPocketMonitoring()
+        when {
+            effective.pocket -> initializePocketMonitoring()
+            // A zone pause never cancels a countdown that is already running.
+            effective.pocketPausedByZone && pocketGraceRunnable != null -> Unit
+            else -> stopPocketMonitoring()
         }
 
-        if (isChargingMonitorActive) {
+        if (effective.charging) {
             ChargingMonitor.start(this)
         } else {
             ChargingMonitor.stop(this)
         }
+
+        updateSafeZoneMonitoring()
 
         return START_STICKY
     }
@@ -790,8 +802,71 @@ class SecurityMonitorService : Service() {
         subscriptionManager = null
     }
 
+    /** Starts or stops everything Safe Zones needs while the service is alive. */
+    private fun updateSafeZoneMonitoring() {
+        val store = com.sentinelshield.antitheft.safezone.SafeZoneStore
+        if (!store.isActive(this)) {
+            stopSafeZoneMonitoring()
+            return
+        }
+
+        val hasHomeWifi = store.zones(this).any { it.bssids.isNotEmpty() }
+        if (hasHomeWifi) {
+            val tracker = wifiTracker ?: com.sentinelshield.antitheft.safezone.HomeWifiTracker(this) {
+                ProtectionController.refreshZone(this)
+                scheduleZoneTick()
+            }.also { wifiTracker = it }
+            tracker.start()
+        } else {
+            wifiTracker?.stop()
+            store.setWifiConnected(this, null)
+            store.setWifiLostAt(this, null)
+        }
+
+        if (!locationReceiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(android.location.LocationManager.PROVIDERS_CHANGED_ACTION)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) addAction(android.location.LocationManager.MODE_CHANGED_ACTION)
+            }
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent) {
+                    // Play services drops geofences when location is switched off; restore them.
+                    com.sentinelshield.antitheft.safezone.GeofenceRegistrar.registerAll(context)
+                }
+            }
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+                } else {
+                    registerReceiver(receiver, filter)
+                }
+                locationReceiver = receiver
+                locationReceiverRegistered = true
+            } catch (_: Exception) {}
+        }
+        scheduleZoneTick()
+    }
+
+    private fun stopSafeZoneMonitoring() {
+        wifiTracker?.stop()
+        wifiTracker = null
+        handler.removeCallbacks(zoneTick)
+        if (locationReceiverRegistered) {
+            locationReceiver?.let { runCatching { unregisterReceiver(it) } }
+            locationReceiver = null
+            locationReceiverRegistered = false
+        }
+    }
+
+    /** Wakes the service when the zone could change by itself (Wi-Fi grace closing, pause ending). */
+    private fun scheduleZoneTick() {
+        handler.removeCallbacks(zoneTick)
+        ProtectionController.nextZoneDeadlineDelayMs(this)?.let { handler.postDelayed(zoneTick, it + 250L) }
+    }
+
     override fun onDestroy() {
         runCatching { unregisterReceiver(userPresentReceiver) }
+        stopSafeZoneMonitoring()
         stopSimMonitoring()
         stopPocketMonitoring()
         ChargingMonitor.stop(this)

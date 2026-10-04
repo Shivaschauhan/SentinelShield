@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -43,6 +44,7 @@ fun SettingsMenuScreen(
     onNavigateToDeviceInfo: () -> Unit,
     onNavigateToDebugLogs: () -> Unit,
     onNavigateToGoogleDrive: (() -> Unit)? = null,
+    onNavigateToSafeZones: (() -> Unit)? = null,
     onNavigateToAbout: () -> Unit
 ) {
     Scaffold(
@@ -97,6 +99,14 @@ fun SettingsMenuScreen(
                                 subtitle = "Connect account & manage cloud evidence folder",
                                 icon = androidx.compose.material.icons.Icons.Default.CloudDone,
                                 onClick = onNavigateToGoogleDrive
+                            )
+                        }
+                        if (onNavigateToSafeZones != null) {
+                            SettingsRowItem(
+                                title = "Safe Zones",
+                                subtitle = "Relax alarms at home and arm them when you leave",
+                                icon = Icons.Default.LocationOn,
+                                onClick = onNavigateToSafeZones
                             )
                         }
                     }
@@ -175,7 +185,8 @@ fun SettingsRowItem(
 fun SettingsSwitchItem(
     title: String,
     subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    @androidx.annotation.DrawableRes iconRes: Int? = null,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
@@ -186,12 +197,22 @@ fun SettingsSwitchItem(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(end = 16.dp)
-        )
+        if (iconRes != null) {
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(end = 16.dp)
+                    .size(36.dp)
+            )
+        } else if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(end = 16.dp)
+            )
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,

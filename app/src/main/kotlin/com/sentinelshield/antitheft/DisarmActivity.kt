@@ -72,17 +72,11 @@ class DisarmActivity : FragmentActivity() {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.primary,
+                                    Image(
+                                        painter = painterResource(id = R.drawable.ic_shield_3d),
+                                        contentDescription = "Sentinel Shield Logo",
                                         modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Image(
-                                            painter = painterResource(id = R.drawable.ic_shield_3d),
-                                            contentDescription = null,
-                                            modifier = Modifier.padding(7.dp)
-                                        )
-                                    }
+                                    )
                                     Text(
                                         text = "SentinelShield Security",
                                         style = MaterialTheme.typography.titleLarge,
@@ -311,11 +305,7 @@ class DisarmActivity : FragmentActivity() {
     }
 
     private fun stopAlarmAndFinish() {
-        SecurityPreferences.setOneTimeChargingArmed(this, false)
-        SecurityPreferences.setPocketArmed(this, false)
-        
-        stopService(Intent(this, SecurityAlertService::class.java))
-        SecurityMonitorService.start(this) // refresh monitor notification
+        ProtectionController.ownerDisarmedAlarm(this)
         
         android.widget.Toast.makeText(this, "Alarm Disarmed", android.widget.Toast.LENGTH_SHORT).show()
         finish()

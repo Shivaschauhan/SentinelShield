@@ -23,6 +23,8 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
 
     <application
@@ -75,7 +77,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-visible, user-armed SIM tamper monitoring for the device owner's anti-theft protection." />
+                android:value="User-visible, user-armed anti-theft monitoring (SIM tamper, pocket snatch, charger unplug and home/away Safe Zones) for the device owner's protection." />
         </service>
 
         <service
@@ -111,6 +113,10 @@
                 <action android:name="android.provider.Telephony.SMS_RECEIVED" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".receivers.GeofenceBroadcastReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".NotificationActionReceiver"

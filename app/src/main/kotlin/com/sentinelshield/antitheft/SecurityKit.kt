@@ -91,6 +91,14 @@ object SecurityPreferences {
     private fun preferences(context: Context) =
         context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
+    fun registerChangeListener(context: Context, listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
+        preferences(context).registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun unregisterChangeListener(context: Context, listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener) {
+        preferences(context).unregisterOnSharedPreferenceChangeListener(listener)
+    }
+
     fun getGoogleDriveEmail(context: Context): String? = preferences(context).getString(GOOGLE_DRIVE_EMAIL, null)
 
     fun setGoogleDriveEmail(context: Context, email: String?) {
@@ -378,13 +386,13 @@ object SecurityNotifier {
         val builder = androidx.core.app.NotificationCompat.Builder(context, MONITOR_CHANNEL)
             .setSmallIcon(R.drawable.ic_shield_lock)
             .setContentTitle("Sentinel Shield")
-            .setContentText("Sentinel Shield is running")
+            .setContentText(ProtectionController.statusLine(context))
             .setContentIntent(openAppIntent(context))
             .setOngoing(true)
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_LOW)
             .setCategory(androidx.core.app.NotificationCompat.CATEGORY_SERVICE)
 
-        val isPersistentArmed = SecurityPreferences.isPersistentChargingArmed(context)
+        val isPersistentArmed = ProtectionController.effective(context).chargingPersistent
         if (!isPersistentArmed) {
             if (!isOneTimeChargingArmed) {
                 val actionIntent = Intent(context, NotificationActionReceiver::class.java).apply {

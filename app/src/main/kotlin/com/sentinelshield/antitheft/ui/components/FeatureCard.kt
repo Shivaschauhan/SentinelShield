@@ -44,7 +44,8 @@ import androidx.compose.foundation.combinedClickable
 fun FeatureCard(
     title: String,
     description: String,
-    icon: ImageVector,
+    icon: ImageVector? = null,
+    @androidx.annotation.DrawableRes iconRes: Int? = null,
     iconColor: Color = MaterialTheme.colorScheme.primary,
     isChecked: Boolean? = null,
     onCheckedChange: ((Boolean) -> Unit)? = null,
@@ -101,19 +102,27 @@ fun FeatureCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Pastel Circle Badge for Icon
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(iconColor.copy(alpha = 0.15f), shape = CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = icon,
+                if (iconRes != null) {
+                    androidx.compose.foundation.Image(
+                        painter = androidx.compose.ui.res.painterResource(id = iconRes),
                         contentDescription = null,
-                        tint = iconColor,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(44.dp)
                     )
+                } else if (icon != null) {
+                    // Pastel Circle Badge for Icon
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(iconColor.copy(alpha = 0.15f), shape = CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = iconColor,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

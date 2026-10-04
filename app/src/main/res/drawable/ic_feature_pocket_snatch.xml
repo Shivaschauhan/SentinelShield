@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Background Squircle -->
+    <path android:pathData="M50,5 C10,5 5,10 5,50 C5,90 10,95 50,95 C90,95 95,90 95,50 C95,10 90,5 50,5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="5"
+                android:startY="5"
+                android:endX="95"
+                android:endY="95">
+                <item android:color="#FFFFECE4" android:offset="0.0" />
+                <item android:color="#FFFFD6C4" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Phone Graphic -->
+    <path android:pathData="M40,20 L60,20 A6,6 0 0,1 66,26 L66,62 A6,6 0 0,1 60,68 L40,68 A6,6 0 0,1 34,62 L34,26 A6,6 0 0,1 40,20 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="34"
+                android:startY="20"
+                android:endX="66"
+                android:endY="68">
+                <item android:color="#FFFF5E3A" android:offset="0.0" />
+                <item android:color="#FFFF2A6D" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Phone Screen Highlight -->
+    <path
+        android:fillAlpha="0.15"
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M41,24 L59,24 A3,3 0 0,1 62,27 L62,61 A3,3 0 0,1 59,64 L41,64 A3,3 0 0,1 38,61 L38,27 A3,3 0 0,1 41,24 Z" />
+
+    <!-- Action/Motion Speed Lines -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M40,76 V88 M50,74 V92 M60,76 V88"
+        android:strokeLineCap="round"
+        android:strokeWidth="4">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="40"
+                android:startY="74"
+                android:endX="60"
+                android:endY="92">
+                <item android:color="#FFFF5E3A" android:offset="0.0" />
+                <item android:color="#FFFF2A6D" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Warning/Alarm Arcs -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M25,30 A25,25 0 0,0 25,58 M75,30 A25,25 0 0,1 75,58"
+        android:strokeAlpha="0.8"
+        android:strokeColor="#FFFF5E3A"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M17,24 A35,35 0 0,0 17,64 M83,24 A35,35 0 0,1 83,64"
+        android:strokeAlpha="0.4"
+        android:strokeColor="#FFFF5E3A"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+</vector>

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -143,10 +144,10 @@ fun PermissionsScreen(
                     FeatureCard(
                         title = "Accessibility Service",
                         description = if (hasAccessibilityAccess) "Fake Shutdown functionality enabled" else "Allows tracking device even if it's turned off",
-                        icon = Icons.Default.Accessibility,
-                        iconColor = if (hasAccessibilityAccess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        iconRes = com.sentinelshield.antitheft.R.drawable.ic_feature_decoy_power,
                         isChecked = hasAccessibilityAccess,
-                        onCheckedChange = { onOpenAccessibilitySettings() }
+                        onCheckedChange = { onOpenAccessibilitySettings() },
+                        isHighlighted = highlightId == "accessibility"
                     )
 
                     FeatureCard(
@@ -161,10 +162,10 @@ fun PermissionsScreen(
                     FeatureCard(
                         title = "Contacts & SMS",
                         description = if (hasSmsPermission) "Emergency contact alerts enabled" else "Notify contacts during emergency via SMS",
-                        icon = Icons.Default.Sms,
-                        iconColor = if (hasSmsPermission) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        iconRes = com.sentinelshield.antitheft.R.drawable.ic_feature_remote_sms,
                         isChecked = hasSmsPermission,
-                        onCheckedChange = { onRequestSmsPermission() }
+                        onCheckedChange = { onRequestSmsPermission() },
+                        isHighlighted = highlightId == "sms"
                     )
 
                     FeatureCard(
@@ -441,6 +442,13 @@ fun AboutScreen(onBack: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.weight(1f))
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(id = com.sentinelshield.antitheft.R.drawable.ic_shield_3d),
+                contentDescription = "Sentinel Shield Logo",
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
+                    .size(96.dp)
+            )
             Text(
                 text = "Sentinel Shield",
                 style = MaterialTheme.typography.headlineLarge,
@@ -561,7 +569,7 @@ fun RemoteSmsSettingsScreen(
                 SettingsSwitchItem(
                     title = "Remote SMS Protection",
                     subtitle = "Master switch to enable processing incoming SMS commands",
-                    icon = Icons.Default.Sms,
+                    iconRes = com.sentinelshield.antitheft.R.drawable.ic_feature_remote_sms,
                     isChecked = isSmsControlArmed,
                     onCheckedChange = { checked ->
                         val hasSmsPerm = context.checkSelfPermission(android.Manifest.permission.SEND_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED

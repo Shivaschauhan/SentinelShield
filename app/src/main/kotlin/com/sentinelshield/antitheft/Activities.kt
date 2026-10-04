@@ -148,6 +148,9 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         refreshState()
+        if (com.sentinelshield.antitheft.safezone.SafeZoneStore.isActive(this)) {
+            com.sentinelshield.antitheft.safezone.GeofenceRegistrar.registerAll(this)
+        }
 
         setContent {
             val appTheme by appThemeState
@@ -228,6 +231,24 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 )
             }
         }
+    }
+
+    private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        refreshState()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        SecurityPreferences.registerChangeListener(this, prefsListener)
+        getSharedPreferences(com.sentinelshield.antitheft.safezone.SafeZoneStore.FILE_NAME, Context.MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(prefsListener)
+    }
+
+    override fun onStop() {
+        SecurityPreferences.unregisterChangeListener(this, prefsListener)
+        getSharedPreferences(com.sentinelshield.antitheft.safezone.SafeZoneStore.FILE_NAME, Context.MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(prefsListener)
+        super.onStop()
     }
 
     override fun onResume() {
@@ -314,22 +335,9 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     }
 
     private fun armMonitor() {
-        val keyguard = getSystemService(KeyguardManager::class.java)
-        if (keyguard == null || !keyguard.isKeyguardSecure) {
-            toast("Set a secure device lock before arming protection.")
-            return
-        }
-        if (checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            toast("Grant phone permission first so SIM changes can be monitored.")
-            return
-        }
-        SecurityPreferences.setArmed(this, true)
-        try {
-            SecurityMonitorService.start(this)
-            toast("SIM tamper monitor armed.")
-        } catch (_: RuntimeException) {
-            SecurityPreferences.setArmed(this, false)
-            toast("Android could not start the monitor. Open the app again and check battery restrictions.")
+        when (val result = ProtectionController.armSim(this)) {
+            is ArmResult.Blocked -> toast(result.reason)
+            ArmResult.Ok -> toast("SIM tamper monitor armed.")
         }
         refreshState()
     }
@@ -386,21 +394,11 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     }
 
     private fun disarm() {
-        if (pendingDisarmFeature == "SIM" || pendingDisarmFeature == "ALL") {
-            SecurityPreferences.setArmed(this, false)
-        }
-        if (pendingDisarmFeature == "CHARGE" || pendingDisarmFeature == "ALL") {
-            SecurityPreferences.setPersistentChargingArmed(this, false)
-            SecurityPreferences.setOneTimeChargingArmed(this, false)
-        }
-        
-        if (!SecurityPreferences.isPocketArmed(this) && !SecurityPreferences.isPersistentChargingArmed(this) && !SecurityPreferences.isOneTimeChargingArmed(this) && !SecurityPreferences.isArmed(this)) {
-            stopService(Intent(this, SecurityMonitorService::class.java))
-        } else {
-            // Need to restart it to update the notification if one-time charging was cleared
-            SecurityMonitorService.start(this)
-        }
-        stopService(Intent(this, SecurityAlertService::class.java))
+        ProtectionController.disarm(
+            this,
+            sim = pendingDisarmFeature == "SIM" || pendingDisarmFeature == "ALL",
+            charging = pendingDisarmFeature == "CHARGE" || pendingDisarmFeature == "ALL",
+        )
         toast("Protection disarmed and alarm stopped.")
         refreshState()
     }
@@ -416,46 +414,23 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
     }
 
     private fun armPocketMonitor() {
-        val keyguard = getSystemService(KeyguardManager::class.java)
-        if (keyguard == null || !keyguard.isKeyguardSecure) {
-            toast("Set a secure device lock before arming protection.")
-            return
-        }
-        SecurityPreferences.setPocketArmed(this, true)
-        try {
-            SecurityMonitorService.start(this)
-            toast("Pocket monitor armed.")
-        } catch (_: RuntimeException) {
-            SecurityPreferences.setPocketArmed(this, false)
-            toast("Android could not start the monitor. Open the app again and check battery restrictions.")
+        when (val result = ProtectionController.armPocket(this)) {
+            is ArmResult.Blocked -> toast(result.reason)
+            ArmResult.Ok -> toast("Pocket monitor armed.")
         }
         refreshState()
     }
 
     private fun disarmPocketMonitor() {
-        SecurityPreferences.setPocketArmed(this, false)
+        ProtectionController.disarmPocket(this)
         toast("Pocket monitor disarmed.")
-        if (!SecurityPreferences.isArmed(this) && !SecurityPreferences.isChargingMonitorActive(this)) {
-            stopService(Intent(this, SecurityMonitorService::class.java))
-        } else {
-            SecurityMonitorService.start(this)
-        }
         refreshState()
     }
 
     private fun armChargingMonitor() {
-        val keyguard = getSystemService(KeyguardManager::class.java)
-        if (keyguard == null || !keyguard.isKeyguardSecure) {
-            toast("Set a secure device lock before arming protection.")
-            return
-        }
-        SecurityPreferences.setPersistentChargingArmed(this, true)
-        try {
-            SecurityMonitorService.start(this)
-            toast("Charging monitor armed.")
-        } catch (_: RuntimeException) {
-            SecurityPreferences.setPersistentChargingArmed(this, false)
-            toast("Android could not start the monitor. Open the app again and check battery restrictions.")
+        when (val result = ProtectionController.armCharging(this)) {
+            is ArmResult.Blocked -> toast(result.reason)
+            ArmResult.Ok -> toast("Charging monitor armed.")
         }
         refreshState()
     }

@@ -44,6 +44,7 @@ Thumbs.db
 *.log
 
 # Submissions, Presentations & Research Papers
+assets/icons/
 Submission/
 docs/
 doc/

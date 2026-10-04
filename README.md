@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.svg" width="72" height="72" alt="SentinelShield Logo" />
+<img src="assets/logo.svg" width="96" height="96" alt="SentinelShield Logo" />
 
 # SentinelShield
 
@@ -56,6 +56,14 @@
   adb shell pm grant com.sentinelshield.antitheft android.permission.WRITE_SECURE_SETTINGS
   ```
 
+### Safe Zones
+* Relaxes some alarms at home and arms them when you leave, so you don't have to flip switches by hand.
+* Home is set from your current GPS fix with a 100 to 500 m radius (150 m by default). It is detected with a geofence and, optionally, your home Wi-Fi network.
+* At home, only Pocket Snatch and the persistent charger alarm can pause. SIM tamper, Intruder Selfie and the one-time charger alarm never pause.
+* Away from home, Pocket Snatch and the charger alarm arm themselves. You can also let SIM tamper and Intruder Selfie turn on when you leave. These stay on until you turn them off.
+* Your own switches are never overwritten by a pause. A ringing alarm or a running pocket countdown is never interrupted.
+* Mock locations are ignored. Background location permission is needed for the geofence, and precise location is needed to read the Wi-Fi network.
+
 ### Wear OS companion
 * Smartwatch module (`:wear`) lets you trigger an emergency SOS alarm and view protection status from your wrist.
 
@@ -79,12 +87,14 @@ flowchart TD
         T2["Power Button & Charger Events"]
         T3["Failed Unlock & SIM Tamper"]
         T4["Offline SMS Commands"]
+        T5["Home Geofence & Wi-Fi"]
     end
 
     subgraph Core ["SentinelShield Core Engine"]
         S1["Security Monitor Service"]
         S2["Alert & Siren Controller"]
         S3["CameraX Capture Engine"]
+        S4["Safe Zones Controller"]
     end
 
     subgraph Actions ["Response & Cloud Sync"]
@@ -97,6 +107,8 @@ flowchart TD
     T1 --> S1
     T2 --> S1
     T4 --> S1
+    T5 --> S4
+    S4 --> S1
     T3 --> S3
     S1 --> S2
     S1 --> R1

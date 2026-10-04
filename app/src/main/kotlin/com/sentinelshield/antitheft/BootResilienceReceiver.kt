@@ -7,13 +7,10 @@ import android.content.Intent
 class BootResilienceReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            val isSimArmed = SecurityPreferences.isArmed(context)
-            val isPocketArmed = SecurityPreferences.isPocketArmed(context)
-            val isChargingMonitorActive = SecurityPreferences.isChargingMonitorActive(context)
-
-            if (isSimArmed || isPocketArmed || isChargingMonitorActive) {
+            if (ProtectionController.needsService(context)) {
                 SecurityMonitorService.start(context)
             }
+            com.sentinelshield.antitheft.safezone.GeofenceRegistrar.registerAll(context)
         }
     }
 }

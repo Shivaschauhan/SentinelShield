@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Background Squircle -->
+    <path android:pathData="M50,5 C10,5 5,10 5,50 C5,90 10,95 50,95 C90,95 95,90 95,50 C95,10 90,5 50,5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="5"
+                android:startY="5"
+                android:endX="95"
+                android:endY="95">
+                <item android:color="#FFE8F5E9" android:offset="0.0" />
+                <item android:color="#FFC8E6C9" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Phone / Battery Body -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M41,15 L59,15 A6,6 0 0,1 65,21 L65,59 A6,6 0 0,1 59,65 L41,65 A6,6 0 0,1 35,59 L35,21 A6,6 0 0,1 41,15 Z"
+        android:strokeWidth="4">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="35"
+                android:startY="15"
+                android:endX="65"
+                android:endY="65">
+                <item android:color="#FF4CAF50" android:offset="0.0" />
+                <item android:color="#FF087F23" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M45,9 L55,9 A2,2 0 0,1 57,11 L57,13 A2,2 0 0,1 55,15 L45,15 A2,2 0 0,1 43,13 L43,11 A2,2 0 0,1 45,9 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="43"
+                android:startY="9"
+                android:endX="57"
+                android:endY="15">
+                <item android:color="#FF4CAF50" android:offset="0.0" />
+                <item android:color="#FF087F23" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Red Alert inside Battery -->
+    <path android:pathData="M50,28 A12,12 0 1,1 50,52 A12,12 0 1,1 50,28 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="38"
+                android:startY="28"
+                android:endX="62"
+                android:endY="52">
+                <item android:color="#FFFF5252" android:offset="0.0" />
+                <item android:color="#FFD32F2F" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M50,34 V42 M50,46 V47"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="3" />
+
+    <!-- Disconnected Cable (USB-C style) falling away -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M50,100 V95"
+        android:strokeColor="#FF455A64"
+        android:strokeLineCap="round"
+        android:strokeWidth="6" />
+    <path
+        android:fillColor="#FF455A64"
+        android:pathData="M43,80 L57,80 A3,3 0 0,1 60,83 L60,92 A3,3 0 0,1 57,95 L43,95 A3,3 0 0,1 40,92 L40,83 A3,3 0 0,1 43,80 Z" />
+
+    <!-- USB-C Connector (separated by a gap from the battery) -->
+    <path
+        android:fillAlpha="0.7"
+        android:fillColor="#FF455A64"
+        android:pathData="M45.5,73 L54.5,73 A1.5,1.5 0 0,1 56,74.5 L56,78.5 A1.5,1.5 0 0,1 54.5,80 L45.5,80 A1.5,1.5 0 0,1 44,78.5 L44,74.5 A1.5,1.5 0 0,1 45.5,73 Z" />
+
+    <!-- Red disconnect spark in the gap -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M40,69 L50,67 L45,71 L55,69"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="40"
+                android:startY="67"
+                android:endX="55"
+                android:endY="71">
+                <item android:color="#FFFF5252" android:offset="0.0" />
+                <item android:color="#FFD32F2F" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

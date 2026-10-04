@@ -20,7 +20,7 @@ object ChargingMonitor {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_POWER_DISCONNECTED -> {
-                    if (SecurityPreferences.isChargingMonitorActive(context)) {
+                    if (ProtectionController.effective(context).charging) {
                         com.sentinelshield.antitheft.utils.DebugLogger.log(context, "ChargingMonitor", "Power disconnected. Active delay: ${SecurityPreferences.getChargingAlarmDelaySeconds(context)}s")
                         cancelPendingAlarm(context)
 
@@ -152,17 +152,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ACTION_TOGGLE_ONETIME_CHARGE) {
-            val isCurrentlyArmed = SecurityPreferences.isOneTimeChargingArmed(context)
-            val turningOn = !isCurrentlyArmed
-            SecurityPreferences.setOneTimeChargingArmed(context, turningOn)
-
-            if (!turningOn) {
-                // If we are disarming, also stop the alarm if it's ringing
-                context.stopService(Intent(context, SecurityAlertService::class.java))
-            }
-
-            // Restart the monitor service so it updates the notification and listeners
-            SecurityMonitorService.start(context)
+            ProtectionController.toggleOneTimeCharging(context)
         }
     }
 }

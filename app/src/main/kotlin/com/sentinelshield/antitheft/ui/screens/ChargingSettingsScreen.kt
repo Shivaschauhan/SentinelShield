@@ -84,12 +84,8 @@ fun ChargingSettingsScreen(
                     iconTint = if (isOneTimeArmed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     onClick = {
                         if (isOneTimeArmed) {
-                            SecurityPreferences.setOneTimeChargingArmed(context, false)
+                            com.sentinelshield.antitheft.ProtectionController.disarmOneTimeCharging(context)
                             isOneTimeArmed = false
-                            // Stop the alarm if it's currently ringing
-                            context.stopService(android.content.Intent(context, com.sentinelshield.antitheft.SecurityAlertService::class.java))
-                            // We need to restart the service to clear the notification
-                            com.sentinelshield.antitheft.SecurityMonitorService.start(context)
                             android.widget.Toast.makeText(context, "One-Time Charge Alarm Disarmed", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }

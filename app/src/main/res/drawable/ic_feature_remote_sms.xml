@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Background Squircle -->
+    <path android:pathData="M50,5 C10,5 5,10 5,50 C5,90 10,95 50,95 C90,95 95,90 95,50 C95,10 90,5 50,5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="5"
+                android:startY="5"
+                android:endX="95"
+                android:endY="95">
+                <item android:color="#FFE3F2FD" android:offset="0.0" />
+                <item android:color="#FFBBDEFB" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Chat Bubble -->
+    <path android:pathData="M22,28 H78 C82.4,28 86,31.6 86,36 V64 C86,68.4 82.4,72 78,72 H35 L22,82 V72 C17.6,72 14,68.4 14,64 V36 C14,31.6 17.6,28 22,28 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="14"
+                android:startY="28"
+                android:endX="86"
+                android:endY="82">
+                <item android:color="#FF1E88E5" android:offset="0.0" />
+                <item android:color="#FF0D47A1" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Terminal Prompt: >_ -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M30,43 L40,50 L30,57"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="4" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M46,57 L66,57"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="4" />
+</vector>

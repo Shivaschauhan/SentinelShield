@@ -53,6 +53,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     data object IntruderSettings : Screen("intruder_settings", "Intruder Selfie Settings")
     data object LiveMap : Screen("settings_live_map", "Live Tracking & Maps")
     data object GoogleDriveSettings : Screen("settings_google_drive", "Google Drive Cloud Backup")
+    data object SafeZones : Screen("settings_safe_zones", "Safe Zones")
     data object DebugLogs : Screen("settings_debug_logs", "Debug & Diagnostics")
     data object About : Screen("settings_about", "About")
 }
@@ -269,8 +270,14 @@ fun AppNavigation(
                     onNavigateToDeviceInfo = { navController.navigate(Screen.DeviceInfo.route) },
                     onNavigateToDebugLogs = { navController.navigate(Screen.DebugLogs.route) },
                     onNavigateToGoogleDrive = { navController.navigate(Screen.GoogleDriveSettings.route) },
+                    onNavigateToSafeZones = { navController.navigate(Screen.SafeZones.route) },
                     onNavigateToAbout = { navController.navigate(Screen.About.route) }
                 )
+            }
+
+            // Sub-screen: Safe Zones
+            composable(Screen.SafeZones.route) {
+                SafeZoneSettingsScreen(onBack = { navController.popBackStack() })
             }
             
             // Sub-screen: Permissions

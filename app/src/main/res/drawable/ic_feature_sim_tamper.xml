@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Background Squircle -->
+    <path android:pathData="M50,5 C10,5 5,10 5,50 C5,90 10,95 50,95 C90,95 95,90 95,50 C95,10 90,5 50,5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="5"
+                android:startY="5"
+                android:endX="95"
+                android:endY="95">
+                <item android:color="#FFF3E5F5" android:offset="0.0" />
+                <item android:color="#FFE1BEE7" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- SIM Card Outer Boundary -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M35,25 h20 l15,15 v35 a5,5 0 0,1 -5,5 h-30 a5,5 0 0,1 -5,-5 v-45 a5,5 0 0,1 5,-5 z"
+        android:strokeLineJoin="round"
+        android:strokeWidth="5">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="30"
+                android:startY="25"
+                android:endX="70"
+                android:endY="80">
+                <item android:color="#FF9C27B0" android:offset="0.0" />
+                <item android:color="#FF4A148C" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- SIM Chip Connectors -->
+    <path android:pathData="M45,45 L55,45 A3,3 0 0,1 58,48 L58,62 A3,3 0 0,1 55,65 L45,65 A3,3 0 0,1 42,62 L42,48 A3,3 0 0,1 45,45 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="42"
+                android:startY="45"
+                android:endX="58"
+                android:endY="65">
+                <item android:color="#FF9C27B0" android:offset="0.0" />
+                <item android:color="#FF4A148C" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M42,50 h16 M42,55 h16 M42,60 h16 M50,45 v20"
+        android:strokeColor="#FFF3E5F5"
+        android:strokeWidth="2" />
+
+    <!-- Alert Badge -->
+    <path
+        android:fillColor="#FFD50000"
+        android:pathData="M75,11 A14,14 0 1,1 75,39 A14,14 0 1,1 75,11 Z"
+        android:strokeColor="#FFE1BEE7"
+        android:strokeWidth="3" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M75,19 v7 M75,29 v2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="3" />
+</vector>
