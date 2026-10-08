@@ -455,8 +455,17 @@ fun AboutScreen(onBack: () -> Unit) {
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val versionName = remember {
+                try {
+                    val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                    pInfo.versionName ?: "0.1.0"
+                } catch (e: Exception) {
+                    "0.1.0"
+                }
+            }
             Text(
-                text = "Version 0.1.0",
+                text = "Version $versionName",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 8.dp)

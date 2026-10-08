@@ -38,7 +38,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Determine Release Tag
+      - name: Determine Release Version
         id: release_info
         run: |
           if [ -n "${{ inputs.release_tag }}" ]; then
@@ -48,7 +48,24 @@ jobs:
           else
             TAG="v0.1.0"
           fi
+
+          # Clean version name (e.g. "v0.1.0" -> "0.1.0", "v1.2.3" -> "1.2.3")
+          VERSION_NAME="${TAG#[vV]}"
+
+          # Compute numeric versionCode from semver: MAJOR * 10000 + MINOR * 100 + PATCH
+          IFS='.-' read -r MAJOR MINOR PATCH _ <<< "$VERSION_NAME"
+          MAJOR=$((10#${MAJOR:-0} 2>/dev/null || 0))
+          MINOR=$((10#${MINOR:-0} 2>/dev/null || 0))
+          PATCH=$((10#${PATCH:-0} 2>/dev/null || 0))
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          if [ "$VERSION_CODE" -le 0 ]; then
+            VERSION_CODE=1
+          fi
+
           echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "Configured release tag: $TAG, versionName: $VERSION_NAME, versionCode: $VERSION_CODE"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -85,18 +102,21 @@ jobs:
             -PRELEASE_STORE_FILE="$RUNNER_TEMP/sentinel-release.keystore" \
             -PRELEASE_STORE_PASSWORD="$SIGNING_STORE_PASSWORD" \
             -PRELEASE_KEY_ALIAS="$SIGNING_KEY_ALIAS" \
-            -PRELEASE_KEY_PASSWORD="$SIGNING_KEY_PASSWORD"
+            -PRELEASE_KEY_PASSWORD="$SIGNING_KEY_PASSWORD" \
+            -PVERSION_NAME="${{ steps.release_info.outputs.version_name }}" \
+            -PVERSION_CODE="${{ steps.release_info.outputs.version_code }}"
 
-      - name: Rename APK
+      - name: Package Release APK
         run: |
-          mv app/build/outputs/apk/release/app-release.apk SentinelShield.apk
-          cp SentinelShield.apk "SentinelShield-${{ steps.release_info.outputs.tag }}.apk"
+          mv app/build/outputs/apk/release/app-release.apk "SentinelShield-${{ steps.release_info.outputs.tag }}.apk"
 
       - name: Prepare Release Notes
         id: release_notes_gen
         env:
           CUSTOM_NOTES: ${{ inputs.release_notes }}
           TAG_NAME: ${{ steps.release_info.outputs.tag }}
+          VER_NAME: ${{ steps.release_info.outputs.version_name }}
+          VER_CODE: ${{ steps.release_info.outputs.version_code }}
         run: |
           if [ -n "$CUSTOM_NOTES" ]; then
             printf "%s\n" "$CUSTOM_NOTES" > release_body.md
@@ -104,10 +124,9 @@ jobs:
             cat << EOF > release_body.md
           ### 🛡️ SentinelShield Anti-Theft Suite $TAG_NAME
 
-          Production release build. Direct APK downloads are available below:
+          Production release build (Version $VER_NAME, Build $VER_CODE).
 
-          * **SentinelShield.apk** (Direct installation package)
-          * **SentinelShield-$TAG_NAME.apk** (Versioned release package)
+          * **SentinelShield-$TAG_NAME.apk** (Official release installation package)
           EOF
           fi
 
@@ -123,13 +142,12 @@ jobs:
           prerelease: ${{ inputs.prerelease || false }}
           generate_release_notes: false
           files: |
-            SentinelShield.apk
             SentinelShield-${{ steps.release_info.outputs.tag }}.apk
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SentinelShield-APK
-          path: SentinelShield.apk
+          name: SentinelShield-${{ steps.release_info.outputs.tag }}-APK
+          path: SentinelShield-${{ steps.release_info.outputs.tag }}.apk
           if-no-files-found: error
           retention-days: 30
