@@ -3,6 +3,25 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+val appVersionNameProp = providers.gradleProperty("VERSION_NAME").orNull?.trim()
+val appVersionCodeProp = providers.gradleProperty("VERSION_CODE").orNull?.trim()?.toIntOrNull()
+
+val parsedVersionName = appVersionNameProp?.removePrefix("v")?.removePrefix("V")?.takeIf { it.isNotEmpty() } ?: "0.1.0"
+val parsedVersionCode = appVersionCodeProp ?: run {
+    val semverParts = parsedVersionName.split('.').mapNotNull { part ->
+        part.takeWhile { it.isDigit() }.toIntOrNull()
+    }
+    if (semverParts.isNotEmpty()) {
+        val major = semverParts.getOrElse(0) { 0 }
+        val minor = semverParts.getOrElse(1) { 0 }
+        val patch = semverParts.getOrElse(2) { 0 }
+        val calculated = major * 10000 + minor * 100 + patch
+        if (calculated > 0) calculated else 1
+    } else {
+        1
+    }
+}
+
 android {
     namespace = "com.sentinelshield.antitheft.wear"
     compileSdk = 34
@@ -11,8 +30,8 @@ android {
         applicationId = "com.sentinelshield.antitheft" // Must match mobile app for wearApp coupling
         minSdk = 30
         targetSdk = 33
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = parsedVersionCode
+        versionName = parsedVersionName
     }
 
     buildTypes {

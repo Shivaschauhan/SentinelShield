@@ -2,6 +2,12 @@ name: Build debug APK
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Version Tag (e.g. v0.1.0 or v1.0.0)'
+        required: false
+        default: 'v0.1.0'
+        type: string
 
 permissions:
   contents: read
@@ -13,6 +19,24 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
+      - name: Determine Version
+        id: version_info
+        run: |
+          TAG="${{ inputs.release_tag || 'v0.1.0' }}"
+          VERSION_NAME="${TAG#[vV]}"
+          IFS='.-' read -r MAJOR MINOR PATCH _ <<< "$VERSION_NAME"
+          MAJOR=$((10#${MAJOR:-0} 2>/dev/null || 0))
+          MINOR=$((10#${MINOR:-0} 2>/dev/null || 0))
+          PATCH=$((10#${PATCH:-0} 2>/dev/null || 0))
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          if [ "$VERSION_CODE" -le 0 ]; then
+            VERSION_CODE=1
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "Configured debug build: tag=$TAG, versionName=$VERSION_NAME, versionCode=$VERSION_CODE"
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -31,15 +55,17 @@ jobs:
       - name: Build with Gradle
         run: |
           chmod +x ./gradlew
-          ./gradlew --no-daemon :app:assembleDebug
+          ./gradlew --no-daemon :app:assembleDebug \
+            -PVERSION_NAME="${{ steps.version_info.outputs.version_name }}" \
+            -PVERSION_CODE="${{ steps.version_info.outputs.version_code }}"
 
       - name: Rename APK
-        run: mv app/build/outputs/apk/debug/app-debug.apk SentinelShield-Debug.apk
+        run: mv app/build/outputs/apk/debug/app-debug.apk "SentinelShield-Debug-${{ steps.version_info.outputs.tag }}.apk"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: SentinelShield-Debug.apk
-          path: SentinelShield-Debug.apk
+          name: SentinelShield-Debug-${{ steps.version_info.outputs.tag }}-APK
+          path: SentinelShield-Debug-${{ steps.version_info.outputs.tag }}.apk
           if-no-files-found: error
           retention-days: 14
